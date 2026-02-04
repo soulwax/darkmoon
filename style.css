@@ -240,7 +240,7 @@ body {
 }
 
 /* Game Over Screen */
-#game-over-screen {
+#gameOverScreen {
     position: absolute;
     top: 0;
     left: 0;
@@ -280,7 +280,7 @@ body {
     margin: 10px 0;
 }
 
-#restart-button, #start-button {
+#restartButton, #startButton {
     background: linear-gradient(135deg, #ff4444, #cc0000);
     color: #fff;
     border: none;
@@ -294,13 +294,13 @@ body {
     box-shadow: 0 5px 15px rgba(255, 68, 68, 0.4);
 }
 
-#restart-button:hover, #start-button:hover {
+#restartButton:hover, #startButton:hover {
     transform: translateY(-3px);
     box-shadow: 0 8px 25px rgba(255, 68, 68, 0.6);
 }
 
 /* Start Screen */
-#start-screen {
+#startScreen {
     position: absolute;
     top: 0;
     left: 0;
@@ -357,7 +357,7 @@ body {
     color: #4f4;
 }
 
-#start-button {
+#startButton {
     background: linear-gradient(135deg, #4CAF50, #45a049);
 }
 

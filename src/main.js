@@ -22,7 +22,7 @@ class Application {
 
         // Load configuration
         try {
-            this.config = await ConfigLoader.loadGameConfig('Resources/game.yaml');
+            this.config = await ConfigLoader.loadGameConfig('/game.yaml');
             console.log('Configuration loaded');
         } catch (error) {
             console.warn('Using default configuration:', error.message);

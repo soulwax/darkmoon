@@ -5,38 +5,38 @@ export const GameAssetManifest = {
     // Sprite sheets with YAML definitions
     spriteSheets: {
         // Player character
-        'player': 'Resources/SpiteSheets/characters/player.yaml',
+        'player': '/SpiteSheets/characters/player.yaml',
 
         // Enemies
-        // 'skeleton': 'Resources/SpiteSheets/characters/skeleton.yaml',
-        // 'slime': 'Resources/SpiteSheets/characters/slime.yaml',
+        // 'skeleton': '/SpiteSheets/characters/skeleton.yaml',
+        // 'slime': '/SpiteSheets/characters/slime.yaml',
 
         // Terrain
-        'grass': 'Resources/SpiteSheets/grass.yaml',
-        // 'water': 'Resources/SpiteSheets/water-sheet.yaml',
+        'grass': '/SpiteSheets/grass.yaml',
+        // 'water': '/SpiteSheets/water-sheet.yaml',
 
         // Objects
-        'objects': 'Resources/SpiteSheets/objects.yaml',
+        'objects': '/SpiteSheets/objects.yaml',
 
         // Decorations
-        'flowers': 'Resources/SpiteSheets/flowers.yaml',
-        'fences': 'Resources/SpiteSheets/fences.yaml'
+        'flowers': '/SpiteSheets/flowers.yaml',
+        'fences': '/SpiteSheets/fences.yaml'
     },
 
     // Standalone images (no YAML)
     images: {
         // Enemy sprites without YAML (use direct rendering)
-        'skeleton': 'Resources/SpiteSheets/characters/skeleton.png',
-        'slime': 'Resources/SpiteSheets/characters/slime.png',
+        'skeleton': '/SpiteSheets/characters/skeleton.png',
+        'slime': '/SpiteSheets/characters/slime.png',
 
         // UI elements
-        // 'ui_heart': 'Resources/UI/heart.png',
+        // 'ui_heart': '/UI/heart.png',
     },
 
     // YAML configs (non-sprite)
     yaml: {
-        'gameConfig': 'Resources/game.yaml',
-        'keybindings': 'Resources/keybindings.yaml'
+        'gameConfig': '/game.yaml',
+        'keybindings': '/keybindings.yaml'
     }
 };
 
@@ -45,7 +45,7 @@ export const GameAssetManifest = {
  */
 export const MinimalAssetManifest = {
     spriteSheets: {
-        'player': 'Resources/SpiteSheets/characters/player.yaml'
+        'player': '/SpiteSheets/characters/player.yaml'
     },
     images: {},
     yaml: {}
@@ -60,23 +60,23 @@ export function getAssetCategory(category) {
     const categories = {
         characters: {
             spriteSheets: {
-                'player': 'Resources/SpiteSheets/characters/player.yaml'
+                'player': '/SpiteSheets/characters/player.yaml'
             },
             images: {
-                'skeleton': 'Resources/SpiteSheets/characters/skeleton.png',
-                'slime': 'Resources/SpiteSheets/characters/slime.png'
+                'skeleton': '/SpiteSheets/characters/skeleton.png',
+                'slime': '/SpiteSheets/characters/slime.png'
             }
         },
         terrain: {
             spriteSheets: {
-                'grass': 'Resources/SpiteSheets/grass.yaml',
-                'flowers': 'Resources/SpiteSheets/flowers.yaml',
-                'fences': 'Resources/SpiteSheets/fences.yaml'
+                'grass': '/SpiteSheets/grass.yaml',
+                'flowers': '/SpiteSheets/flowers.yaml',
+                'fences': '/SpiteSheets/fences.yaml'
             }
         },
         objects: {
             spriteSheets: {
-                'objects': 'Resources/SpiteSheets/objects.yaml'
+                'objects': '/SpiteSheets/objects.yaml'
             }
         }
     };

@@ -29,7 +29,7 @@ export class ConfigLoader {
      * @param {string} path - Path to game.yaml
      * @returns {Promise<GameConfig>}
      */
-    static async loadGameConfig(path = 'Resources/game.yaml') {
+    static async loadGameConfig(path = '/game.yaml') {
         try {
             const yamlConfig = await ConfigLoader.loadYaml(path);
             return new GameConfig(yamlConfig);

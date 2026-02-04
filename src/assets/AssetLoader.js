@@ -1,6 +1,7 @@
 // File: src/assets/AssetLoader.js
 // Central asset loader for images and YAML files
 
+import yaml from 'js-yaml';
 import { SpriteSheet } from './SpriteSheet.js';
 
 export class AssetLoader {
@@ -76,13 +77,8 @@ export class AssetLoader {
             }
             const text = await response.text();
 
-            // Use js-yaml if available
-            let data;
-            if (typeof jsyaml !== 'undefined') {
-                data = jsyaml.load(text);
-            } else {
-                throw new Error('js-yaml not loaded');
-            }
+            // Parse YAML
+            const data = yaml.load(text);
 
             this.yaml.set(key, data);
             return data;
