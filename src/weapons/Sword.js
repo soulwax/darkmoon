@@ -37,6 +37,9 @@ export class Sword extends Weapon {
         // Auto-attack settings
         this.autoAttack = true;
         this.nearestEnemy = null;
+
+        // Cooldown timer
+        this.currentCooldown = 0;
     }
 
     /**
