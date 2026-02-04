@@ -1,0 +1,269 @@
+// File: src/graphics/Camera.js
+// 2D Camera with smooth follow and bounds
+
+import { Vector2, MathUtils } from '../core/Math.js';
+
+export class Camera {
+    constructor(viewportWidth, viewportHeight, config = {}) {
+        this.viewportWidth = viewportWidth;
+        this.viewportHeight = viewportHeight;
+
+        // Camera position (top-left corner in world space)
+        this.position = new Vector2(0, 0);
+
+        // Target to follow
+        this.target = null;
+        this.targetOffset = new Vector2(0, 0);
+
+        // Smoothing (0 = instant, 1 = very smooth)
+        this.smoothing = config.followSmoothing || 0.15;
+
+        // Zoom level
+        this.zoom = config.zoom || 1.0;
+        this.minZoom = 0.5;
+        this.maxZoom = 2.0;
+
+        // World bounds
+        this.boundsEnabled = config.boundsEnabled !== false;
+        this.bounds = {
+            minX: config.minX || 0,
+            minY: config.minY || 0,
+            maxX: config.maxX || 1600,
+            maxY: config.maxY || 1600
+        };
+
+        // Dead zone (area where target can move without camera moving)
+        this.deadZone = {
+            width: config.deadZoneWidth || 0,
+            height: config.deadZoneHeight || 0
+        };
+
+        // Camera shake
+        this.shakeEnabled = config.shakeEnabled !== false;
+        this.shakeIntensity = 0;
+        this.shakeDuration = 0;
+        this.shakeOffset = new Vector2(0, 0);
+        this.maxShakeIntensity = config.maxShakeIntensity || 5;
+    }
+
+    /**
+     * Set the target to follow
+     * @param {Object} target - Object with x, y properties
+     * @param {number} [offsetX=0] - Offset from target center
+     * @param {number} [offsetY=0]
+     */
+    follow(target, offsetX = 0, offsetY = 0) {
+        this.target = target;
+        this.targetOffset.set(offsetX, offsetY);
+    }
+
+    /**
+     * Stop following target
+     */
+    unfollow() {
+        this.target = null;
+    }
+
+    /**
+     * Set camera position directly
+     * @param {number} x
+     * @param {number} y
+     */
+    setPosition(x, y) {
+        this.position.set(x, y);
+        this._clampToBounds();
+    }
+
+    /**
+     * Center camera on a point
+     * @param {number} x
+     * @param {number} y
+     */
+    centerOn(x, y) {
+        this.position.set(
+            x - this.viewportWidth / (2 * this.zoom),
+            y - this.viewportHeight / (2 * this.zoom)
+        );
+        this._clampToBounds();
+    }
+
+    /**
+     * Set world bounds
+     */
+    setBounds(minX, minY, maxX, maxY) {
+        this.bounds.minX = minX;
+        this.bounds.minY = minY;
+        this.bounds.maxX = maxX;
+        this.bounds.maxY = maxY;
+    }
+
+    /**
+     * Set zoom level
+     * @param {number} level
+     */
+    setZoom(level) {
+        this.zoom = MathUtils.clamp(level, this.minZoom, this.maxZoom);
+    }
+
+    /**
+     * Trigger camera shake
+     * @param {number} intensity
+     * @param {number} duration - Duration in seconds
+     */
+    shake(intensity, duration) {
+        if (!this.shakeEnabled) return;
+        this.shakeIntensity = Math.min(intensity, this.maxShakeIntensity);
+        this.shakeDuration = duration;
+    }
+
+    /**
+     * Update camera position
+     * @param {number} deltaTime
+     */
+    update(deltaTime) {
+        // Follow target
+        if (this.target) {
+            const targetX = this.target.x + this.targetOffset.x - this.viewportWidth / (2 * this.zoom);
+            const targetY = this.target.y + this.targetOffset.y - this.viewportHeight / (2 * this.zoom);
+
+            // Apply dead zone
+            let dx = targetX - this.position.x;
+            let dy = targetY - this.position.y;
+
+            const halfDeadX = this.deadZone.width / 2;
+            const halfDeadY = this.deadZone.height / 2;
+
+            if (Math.abs(dx) < halfDeadX) dx = 0;
+            else dx -= Math.sign(dx) * halfDeadX;
+
+            if (Math.abs(dy) < halfDeadY) dy = 0;
+            else dy -= Math.sign(dy) * halfDeadY;
+
+            // Smooth follow (lerp)
+            if (this.smoothing > 0) {
+                const t = 1 - Math.pow(this.smoothing, deltaTime * 60);
+                this.position.x += dx * t;
+                this.position.y += dy * t;
+            } else {
+                this.position.x = targetX;
+                this.position.y = targetY;
+            }
+        }
+
+        // Update shake
+        if (this.shakeDuration > 0) {
+            this.shakeDuration -= deltaTime;
+            const t = this.shakeDuration > 0 ? this.shakeIntensity : 0;
+            this.shakeOffset.set(
+                MathUtils.random(-t, t),
+                MathUtils.random(-t, t)
+            );
+        } else {
+            this.shakeOffset.set(0, 0);
+        }
+
+        // Clamp to bounds
+        this._clampToBounds();
+    }
+
+    /**
+     * Clamp camera position to world bounds
+     */
+    _clampToBounds() {
+        if (!this.boundsEnabled) return;
+
+        const viewW = this.viewportWidth / this.zoom;
+        const viewH = this.viewportHeight / this.zoom;
+
+        // Clamp so camera doesn't show outside world
+        this.position.x = MathUtils.clamp(
+            this.position.x,
+            this.bounds.minX,
+            Math.max(this.bounds.minX, this.bounds.maxX - viewW)
+        );
+
+        this.position.y = MathUtils.clamp(
+            this.position.y,
+            this.bounds.minY,
+            Math.max(this.bounds.minY, this.bounds.maxY - viewH)
+        );
+    }
+
+    /**
+     * Convert world coordinates to screen coordinates
+     * @param {number} worldX
+     * @param {number} worldY
+     * @returns {{x: number, y: number}}
+     */
+    worldToScreen(worldX, worldY) {
+        return {
+            x: (worldX - this.position.x - this.shakeOffset.x) * this.zoom,
+            y: (worldY - this.position.y - this.shakeOffset.y) * this.zoom
+        };
+    }
+
+    /**
+     * Convert screen coordinates to world coordinates
+     * @param {number} screenX
+     * @param {number} screenY
+     * @returns {{x: number, y: number}}
+     */
+    screenToWorld(screenX, screenY) {
+        return {
+            x: screenX / this.zoom + this.position.x + this.shakeOffset.x,
+            y: screenY / this.zoom + this.position.y + this.shakeOffset.y
+        };
+    }
+
+    /**
+     * Check if a world rectangle is visible
+     * @param {number} x
+     * @param {number} y
+     * @param {number} width
+     * @param {number} height
+     * @returns {boolean}
+     */
+    isVisible(x, y, width, height) {
+        const viewW = this.viewportWidth / this.zoom;
+        const viewH = this.viewportHeight / this.zoom;
+
+        return x + width > this.position.x &&
+               x < this.position.x + viewW &&
+               y + height > this.position.y &&
+               y < this.position.y + viewH;
+    }
+
+    /**
+     * Apply camera transform to canvas context
+     * @param {CanvasRenderingContext2D} ctx
+     */
+    applyTransform(ctx) {
+        ctx.save();
+        ctx.scale(this.zoom, this.zoom);
+        ctx.translate(
+            -this.position.x - this.shakeOffset.x,
+            -this.position.y - this.shakeOffset.y
+        );
+    }
+
+    /**
+     * Reset camera transform
+     * @param {CanvasRenderingContext2D} ctx
+     */
+    resetTransform(ctx) {
+        ctx.restore();
+    }
+
+    /**
+     * Get visible world bounds
+     * @returns {{x: number, y: number, width: number, height: number}}
+     */
+    getVisibleBounds() {
+        return {
+            x: this.position.x,
+            y: this.position.y,
+            width: this.viewportWidth / this.zoom,
+            height: this.viewportHeight / this.zoom
+        };
+    }
+}

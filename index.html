@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<!-- File: index.html -->
+
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darkmoon - Vampire Survivors Prototype</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- js-yaml for YAML parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- HUD Overlay -->
+        <div id="hud">
+            <div id="stats">
+                <div class="stat-bar">
+                    <div class="stat-label">HP</div>
+                    <div class="bar-container">
+                        <div id="health-bar" class="bar health-bar"></div>
+                    </div>
+                    <div id="health-text" class="stat-value">100/100</div>
+                </div>
+                <div class="stat-bar">
+                    <div class="stat-label">XP</div>
+                    <div class="bar-container">
+                        <div id="xp-bar" class="bar xp-bar"></div>
+                    </div>
+                    <div id="level-text" class="stat-value">Level 1</div>
+                </div>
+            </div>
+            <div id="timer">Time: <span id="time-value">0:00</span></div>
+            <div id="kill-counter">Kills: <span id="kill-value">0</span></div>
+        </div>
+
+        <!-- Level Up Screen -->
+        <div id="levelUpScreen" class="hidden">
+            <div class="level-up-content">
+                <h2>LEVEL UP!</h2>
+                <p>Choose an upgrade:</p>
+                <div id="upgrade-options"></div>
+            </div>
+        </div>
+
+        <!-- Game Over Screen -->
+        <div id="gameOverScreen" class="hidden">
+            <div class="game-over-content">
+                <h1>GAME OVER</h1>
+                <div class="final-stats">
+                    <p>Time Survived: <span id="finalTime">0:00</span></p>
+                    <p>Enemies Killed: <span id="finalKills">0</span></p>
+                </div>
+                <button id="restartButton">Play Again</button>
+            </div>
+        </div>
+
+        <!-- Start Screen -->
+        <div id="startScreen">
+            <div class="start-content">
+                <h1>DARKMOON</h1>
+                <p class="subtitle">A Vampire Survivors Prototype</p>
+                <div class="instructions">
+                    <h3>How to Play:</h3>
+                    <p><strong>WASD</strong> - Move</p>
+                    <p><strong>Weapons</strong> - Auto-attack nearby enemies</p>
+                    <p><strong>Goal</strong> - Survive as long as possible!</p>
+                </div>
+                <button id="startButton">Start Game</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- New ES Module Architecture -->
+    <script type="module" src="src/main.js"></script>
+
+    <!-- Legacy scripts (kept for reference during migration) -->
+    <!--
+    <script src="particle.js"></script>
+    <script src="weapon.js"></script>
+    <script src="enemy.js"></script>
+    <script src="player.js"></script>
+    <script src="ui.js"></script>
+    <script src="game.js"></script>
+    -->
+</body>
+</html>

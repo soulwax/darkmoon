@@ -1,10 +1,9 @@
 # File: Resources/keybindings.yaml
-
 # Keybindings Configuration File
 # All game keybindings are defined here
 # Format: action_name: [list of SDL keycode values or key names]
-
 # Movement keys (player movement)
+
 move_up:
   - 119    # SDLK_W
   - 1073741906  # SDLK_UP
