@@ -5,6 +5,16 @@ import yaml from 'js-yaml';
 import { GameConfig } from './GameConfig.js';
 
 export class ConfigLoader {
+    static resolvePath(path) {
+        if (!path) return path;
+        if (/^https?:\/\//i.test(path)) return path;
+
+        const baseUrl = (import.meta?.env?.BASE_URL || '/');
+        const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+        return `${base}${normalizedPath}`;
+    }
+
     /**
      * Load and parse a YAML configuration file
      * @param {string} path - Path to YAML file
@@ -12,9 +22,10 @@ export class ConfigLoader {
      */
     static async loadYaml(path) {
         try {
-            const response = await fetch(path);
+            const resolved = ConfigLoader.resolvePath(path);
+            const response = await fetch(resolved);
             if (!response.ok) {
-                throw new Error(`Failed to load config: ${path} (${response.status})`);
+                throw new Error(`Failed to load config: ${resolved} (${response.status})`);
             }
             const text = await response.text();
             return yaml.load(text);
@@ -29,7 +40,7 @@ export class ConfigLoader {
      * @param {string} path - Path to game.yaml
      * @returns {Promise<GameConfig>}
      */
-    static async loadGameConfig(path = '/game.yaml') {
+    static async loadGameConfig(path = 'game.yaml') {
         try {
             const yamlConfig = await ConfigLoader.loadYaml(path);
             return new GameConfig(yamlConfig);

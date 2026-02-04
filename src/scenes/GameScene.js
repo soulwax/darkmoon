@@ -158,19 +158,20 @@ export class GameScene extends Scene {
             this.config.world.worldHeightTiles
         );
 
-        // Define tile types
-        this.tileMap.defineTileType(1, {
-            color: '#2d5a27',
-            walkable: true
-        });
-        this.tileMap.defineTileType(2, {
-            color: '#3d6a37',
-            walkable: true
-        });
-        this.tileMap.defineTileType(3, {
-            color: '#1d4a17',
-            walkable: true
-        });
+        // Optional: use sprite-based ground if available
+        const grassSprite = this.assetLoader?.getSpriteSheet?.('grass') || null;
+        if (grassSprite) {
+            this.tileMap.registerSpriteSheet('grass', grassSprite);
+
+            this.tileMap.defineTileType(1, { spriteSheet: 'grass', tileId: 0, walkable: true });
+            this.tileMap.defineTileType(2, { spriteSheet: 'grass', tileId: 0, walkable: true });
+            this.tileMap.defineTileType(3, { spriteSheet: 'grass', tileId: 0, walkable: true });
+        } else {
+            // Define tile types (color fallback)
+            this.tileMap.defineTileType(1, { color: '#2d5a27', walkable: true });
+            this.tileMap.defineTileType(2, { color: '#3d6a37', walkable: true });
+            this.tileMap.defineTileType(3, { color: '#1d4a17', walkable: true });
+        }
 
         // Generate ground
         this.tileMap.generateGround({

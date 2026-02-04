@@ -5,7 +5,8 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  publicDir: 'Resources',
+  // Public assets (served/copied as-is). Game content lives under src/Resources.
+  publicDir: 'src/Resources',
   base: './',
   server: {
     port: 3000,
@@ -16,7 +17,8 @@ export default defineConfig({
     outDir: 'dist',
     assetsDir: 'assets',
     sourcemap: true,
-    minify: 'terser',
+    // Keep build self-contained (no optional terser dependency required).
+    minify: 'esbuild',
     rollupOptions: {
       input: {
         main: './index.html'

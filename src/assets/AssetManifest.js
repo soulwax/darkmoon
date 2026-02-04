@@ -52,6 +52,24 @@ export const MinimalAssetManifest = {
 };
 
 /**
+ * Core graphics manifest (player + enemies + world tiles)
+ */
+export const CoreAssetManifest = {
+    spriteSheets: {
+        'player': '/SpiteSheets/characters/player.yaml',
+        'grass': '/SpiteSheets/grass.yaml'
+    },
+    images: {
+        'skeleton': '/SpiteSheets/characters/skeleton.png',
+        'slime': '/SpiteSheets/characters/slime.png'
+    },
+    yaml: {
+        'gameConfig': '/game.yaml',
+        'keybindings': '/keybindings.yaml'
+    }
+};
+
+/**
  * Get asset paths for a specific category
  * @param {string} category - 'characters', 'terrain', 'objects', etc.
  * @returns {Object}

@@ -50,15 +50,30 @@ export class SpawnSystem {
      * Load enemy sprite images
      */
     _loadSprites() {
-        // Load skeleton sprite
-        const skeletonImg = new Image();
-        skeletonImg.src = '/SpiteSheets/characters/skeleton.png';
-        this.spriteImages.skeleton = skeletonImg;
+        // Prefer preloaded assets from the AssetLoader (manifest-driven)
+        if (this.assetLoader) {
+            const skeleton = this.assetLoader.getImage('skeleton');
+            const slime = this.assetLoader.getImage('slime');
+            if (skeleton) this.spriteImages.skeleton = skeleton;
+            if (slime) this.spriteImages.slime = slime;
+        }
 
-        // Load slime sprite
-        const slimeImg = new Image();
-        slimeImg.src = '/SpiteSheets/characters/slime.png';
-        this.spriteImages.slime = slimeImg;
+        // Fallback: load directly (base-aware)
+        const baseUrl = (import.meta?.env?.BASE_URL || '/');
+        const base = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+        const resolve = (p) => `${base}${p.startsWith('/') ? p.slice(1) : p}`;
+
+        if (!this.spriteImages.skeleton) {
+            const skeletonImg = new Image();
+            skeletonImg.src = resolve('/SpiteSheets/characters/skeleton.png');
+            this.spriteImages.skeleton = skeletonImg;
+        }
+
+        if (!this.spriteImages.slime) {
+            const slimeImg = new Image();
+            slimeImg.src = resolve('/SpiteSheets/characters/slime.png');
+            this.spriteImages.slime = slimeImg;
+        }
     }
 
     _setupEvents() {

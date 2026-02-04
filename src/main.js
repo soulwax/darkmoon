@@ -6,7 +6,7 @@ import { ConfigLoader } from './config/ConfigLoader.js';
 import { GameConfig } from './config/GameConfig.js';
 import { eventBus, GameEvents } from './core/EventBus.js';
 import { assetLoader } from './assets/AssetLoader.js';
-import { MinimalAssetManifest } from './assets/AssetManifest.js';
+import { CoreAssetManifest } from './assets/AssetManifest.js';
 import { SceneManager } from './scenes/SceneManager.js';
 import { GameScene } from './scenes/GameScene.js';
 
@@ -20,9 +20,12 @@ class Application {
     async init() {
         console.log('Darkmoon initializing...');
 
+        // Make asset/config fetches base-aware (Vite base "./" builds)
+        assetLoader.setBasePath(import.meta.env.BASE_URL);
+
         // Load configuration
         try {
-            this.config = await ConfigLoader.loadGameConfig('/game.yaml');
+            this.config = await ConfigLoader.loadGameConfig('game.yaml');
             console.log('Configuration loaded');
         } catch (error) {
             console.warn('Using default configuration:', error.message);
@@ -37,7 +40,7 @@ class Application {
 
         // Load assets
         try {
-            await assetLoader.loadManifest(MinimalAssetManifest);
+            await assetLoader.loadManifest(CoreAssetManifest);
             console.log('Assets loaded');
         } catch (error) {
             console.warn('Some assets failed to load:', error.message);

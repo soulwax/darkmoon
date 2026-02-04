@@ -14,6 +14,25 @@ export class AssetLoader {
     }
 
     /**
+     * Resolve an asset path against the configured basePath.
+     * Handles leading slashes so assets work with Vite base "./" builds.
+     * @param {string} path
+     * @returns {string}
+     */
+    resolvePath(path) {
+        if (!path) return path;
+
+        // Leave absolute URLs alone
+        if (/^https?:\/\//i.test(path)) return path;
+
+        if (!this.basePath) return path;
+
+        const base = this.basePath.endsWith('/') ? this.basePath : `${this.basePath}/`;
+        const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
+        return `${base}${normalizedPath}`;
+    }
+
+    /**
      * Set base path for all asset loading
      * @param {string} path
      */
@@ -38,7 +57,7 @@ export class AssetLoader {
             return this.loading.get(key);
         }
 
-        const fullPath = this.basePath + path;
+        const fullPath = this.resolvePath(path);
         const promise = new Promise((resolve, reject) => {
             const img = new Image();
             img.onload = () => {
@@ -69,7 +88,7 @@ export class AssetLoader {
             return this.yaml.get(key);
         }
 
-        const fullPath = this.basePath + path;
+        const fullPath = this.resolvePath(path);
         try {
             const response = await fetch(fullPath);
             if (!response.ok) {
