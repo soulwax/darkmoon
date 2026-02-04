@@ -103,3 +103,5 @@ Created as a Vampire Survivors-inspired prototype for the Darkmoon game project.
 ---
 
 **Enjoy the game and see how long you can survive!** 🧛‍♂️
+
+License: GPL-3.0-only see: [LICENSE](LICENSE.md)
