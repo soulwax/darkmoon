@@ -5,9 +5,7 @@ meta:
   frames: variant
   frame_rate: 0
   loop: false
-
   variant: "player"
-
   file:
   - player.png
 
