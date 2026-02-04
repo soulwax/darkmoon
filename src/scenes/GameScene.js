@@ -317,6 +317,12 @@ export class GameScene extends Scene {
     }
 
     draw(ctx, alpha) {
+        // Debug: draw info at screen position (before camera transform)
+        ctx.fillStyle = '#ff0';
+        ctx.font = '14px Arial';
+        ctx.fillText(`Player: ${Math.round(this.player?.x || 0)}, ${Math.round(this.player?.y || 0)}`, 200, 30);
+        ctx.fillText(`Camera: ${Math.round(this.camera?.position?.x || 0)}, ${Math.round(this.camera?.position?.y || 0)}`, 200, 50);
+
         // Apply camera transform
         this.camera.applyTransform(ctx);
 

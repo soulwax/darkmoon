@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(\"C:\\\\Program Files\\\\PowerShell\\\\7\\\\pwsh.EXE\" -Command \"Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\game.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''; Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\player.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''; Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\enemy.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''; Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\weapon.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''; Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\particle.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''; Move-Item ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\ui.js'' ''d:\\\\Workspace\\\\Web\\\\Games\\\\Darkmoon\\\\src\\\\legacy\\\\''\")"
     ]
   }
 }
