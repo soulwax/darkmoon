@@ -1,0 +1,57 @@
+# File: Resources/SpiteSheets/objects/rock_in_water_frames.yaml
+
+meta:
+  tile_size: 16
+  frames: 6
+  frame_rate: 0.1
+  frame_offset_start: 0
+  frame_offset_x: 0
+  frame_offset_y: 0
+  frame_1: rock_in_water_01.png
+  frame_2: rock_in_water_02.png
+  frame_3: rock_in_water_03.png
+  frame_4: rock_in_water_04.png
+  frame_5: rock_in_water_05.png
+  frame_6: rock_in_water_06.png
+  loop: true
+  files:
+  - rock_in_water_01.png
+  - rock_in_water_02.png
+  - rock_in_water_03.png
+  - rock_in_water_04.png
+  - rock_in_water_05.png
+  - rock_in_water_06.png
+
+tiles:
+- id: 0
+  name: rock_in_water
+  atlas_x: 0
+  atlas_y: 0
+  tile_size: 16
+  repeated: true
+  layer: ground
+  category: water
+  walkable: false
+  swimmable: false
+  climbable: true
+  crawlable: false
+  fly_through: true
+  blocks_movement: true
+  movement_cost: 0.5
+  has_collision: true
+  contains_transparency: false
+  alpha_mode: alpha_blend
+  casts_shadow: false
+  receives_shadow: true
+  z_bias: 0
+  interactable: false
+  destructible: false
+  collectible: false
+  hit_points: 0
+  footstep_sound: water
+  impact_sound: water_splash
+  ambient_sound: null
+  provides_cover: true
+  concealment: 0.5
+  editor_color: #7F7F7F
+  editor_icon: rock_in_water

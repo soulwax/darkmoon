@@ -1,0 +1,235 @@
+# File: Resources/game.yaml
+# Game Configuration File for Runa2 Engine
+# All settings can be loaded via ResourceManager or custom config loader
+# Window Settings
+
+window:
+  title: "Runa2 Game"
+  width: 1280
+  height: 720
+  fullscreen: false
+  resizable: true
+  vsync: true
+  borderless: false
+
+# Graphics Settings
+graphics:
+  target_fps: 60
+  fps_limit_enabled: true
+  render_scale: 1.0  # Render at different resolution then scale
+  show_fps: true
+  anti_aliasing: true
+  post_processing_enabled: false
+
+# Game World Settings
+world:
+  tile_size: 16
+  world_width_tiles: 100
+  world_height_tiles: 100
+  gravity: 980.0  # pixels per second squared
+  terminal_velocity: 500.0
+
+# Player Settings
+player:
+  start_x: 400.0
+  start_y: 300.0
+  width: 16
+  height: 16
+  speed: 120.0  # pixels per second
+  jump_force: 300.0
+  max_health: 100
+  max_stamina: 100
+  stamina_regen_rate: 10.0  # per second
+  can_double_jump: false
+  dash_enabled: true
+  dash_speed: 300.0
+  dash_duration: 0.2  # seconds
+  dash_cooldown: 1.0  # seconds
+
+# Camera Settings
+camera:
+  follow_player: true
+  follow_smoothing: 0.15  # 0.0 = instant, 1.0 = very smooth
+  zoom: 1.0
+  shake_enabled: true
+  max_shake_intensity: 5.0
+  bounds_enabled: false
+  min_x: 0
+  min_y: 0
+  max_x: 1600
+  max_y: 1600
+  dead_zone_width: 100  # pixels
+  dead_zone_height: 100
+
+# Physics Settings
+physics:
+  use_gravity: true
+  friction: 0.85
+  air_resistance: 0.95
+  collision_enabled: true
+  max_velocity_x: 500.0
+  max_velocity_y: 800.0
+  slope_angle_max: 45.0  # degrees
+
+# Input Settings
+input:
+  keyboard:
+    move_up: "W"
+    move_down: "S"
+    move_left: "A"
+    move_right: "D"
+    jump: "Space"
+    dash: "Shift"
+    interact: "E"
+    attack: "J"
+    special: "K"
+    pause: "Escape"
+    inventory: "I"
+    map: "M"
+
+  mouse:
+    enabled: true
+    aim_mode: true  # Mouse controls aiming
+    sensitivity: 1.0
+
+  gamepad:
+    enabled: true
+    deadzone: 0.15
+    vibration: true
+
+# Audio Settings
+audio:
+  master_volume: 1.0
+  music_volume: 0.7
+  sfx_volume: 0.8
+  ambient_volume: 0.5
+  mute_on_focus_lost: true
+
+# Debug Settings
+debug:
+  enabled: true
+  show_fps_counter: true
+  show_entity_count: true
+  show_collision_boxes: false
+  show_tile_grid: false
+  show_camera_bounds: false
+  show_velocity_vectors: false
+  log_level: "info"  # trace, debug, info, warn, error, critical
+  fps_counter_position: "top_right"  # top_left, top_right, bottom_left, bottom_right
+
+# Resource Paths
+resources:
+  sprites_path: "Resources/mystic_woods_2.2/sprites/"
+  tilesets_path: "Resources/mystic_woods_2.2/sprites/tilesets/"
+  fonts_path: "Resources/Fonts/"
+  shaders_path: "Resources/shaders/"
+  audio_path: "Resources/Audio/"
+  save_path: "Saves/"
+  config_path: "Config/"
+
+# Tileset Configuration
+tilesets:
+  - name: "plains_atlas"
+    yaml_path: "Resources/mystic_woods_2.2/sprites/tilesets/plains.yaml"
+    texture_path: "Resources/mystic_woods_2.2/sprites/tilesets/plains.png"
+
+  - name: "dungeon_atlas"
+    yaml_path: "Resources/mystic_woods_2.2/sprites/tilesets/dungeon.yaml"
+    texture_path: "Resources/mystic_woods_2.2/sprites/tilesets/dungeon.png"
+
+# UI Settings
+ui:
+  show_hud: true
+  show_minimap: false
+  minimap_scale: 0.2
+  health_bar_position: "top_left"
+  stamina_bar_position: "top_left"
+  inventory_slots: 20
+  hotbar_slots: 8
+  font_size_default: 16
+  font_size_title: 32
+  font_size_small: 12
+
+# Gameplay Settings
+gameplay:
+  difficulty: "normal"  # easy, normal, hard
+  permadeath: false
+  auto_save: true
+  auto_save_interval: 300.0  # seconds
+  day_night_cycle: false
+  day_length: 1200.0  # seconds for full day/night cycle
+  weather_enabled: false
+  enemy_spawn_rate: 1.0  # multiplier
+
+# Particle System Settings
+particles:
+  max_particles: 1000
+  default_lifetime: 2.0  # seconds
+  pool_size: 500
+  enabled: true
+
+# Animation Settings
+animation:
+  default_frame_duration: 0.1  # seconds per frame
+  interpolate_movement: true
+  sprite_flip_enabled: true
+
+# Collision Layers
+collision_layers:
+  - name: "world"
+    id: 1
+  - name: "player"
+    id: 2
+  - name: "enemies"
+    id: 4
+  - name: "items"
+    id: 8
+  - name: "projectiles"
+    id: 16
+
+# Game States
+game_states:
+  initial_state: "main_menu"
+  states:
+    - main_menu
+    - gameplay
+    - pause
+    - inventory
+    - settings
+    - game_over
+
+# Save Game Settings
+save:
+  auto_save: true
+  max_save_slots: 3
+  save_format: "json"  # json or binary
+  compress_saves: false
+  backup_saves: true
+
+# Performance Settings
+performance:
+  entity_culling: true
+  culling_margin: 100  # pixels outside screen
+  tile_batching: true
+  max_draw_calls: 1000
+  async_loading: true
+  preload_assets: false
+
+# Localization
+localization:
+  default_language: "en"
+  supported_languages:
+    - en
+    - es
+    - fr
+    - de
+  language_path: "Resources/Languages/"
+
+# Cheats (Debug Only)
+cheats:
+  enabled: false
+  god_mode: false
+  infinite_stamina: false
+  no_clip: false
+  speed_multiplier: 1.0
+  spawn_items: false

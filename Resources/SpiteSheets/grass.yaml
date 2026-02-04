@@ -1,0 +1,42 @@
+# File: Resources/SpiteSheets/grass.yaml
+
+meta:
+  tile_size: 16
+  frames: 1
+  frame_rate: 0
+  loop: false
+  file:
+  - grass.png
+
+tiles:
+- id: 0
+  type: "grass_default"
+  atlas_x: 0
+  atlas_y: 0
+  tile_size: 16
+  layer: ground
+  category: terrain_path
+  walkable: true
+  swimmable: false
+  climbable: false
+  crawlable: false
+  fly_through: true
+  blocks_movement: false
+  movement_cost: 1.0
+  has_collision: false
+  contains_transparency: false
+  alpha_mode: alpha_blend
+  casts_shadow: false
+  receives_shadow: true
+  z_bias: 0
+  interactable: false
+  destructible: false
+  collectible: false
+  hit_points: 0
+  footstep_sound: grass
+  impact_sound: null
+  ambient_sound: null
+  provides_cover: false
+  concealment: 0.0
+  editor_color: "#66FF6A"
+  editor_icon: grass_default

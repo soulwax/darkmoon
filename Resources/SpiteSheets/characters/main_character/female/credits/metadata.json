@@ -1,0 +1,301 @@
+{
+  "exportTimestamp": "2026-01-13T11-42-38",
+  "bodyType": "female",
+  "standardAnimations": {
+    "exported": {
+      "spellcast": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "thrust": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "walk": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png",
+        "009 crystal__blue_.png",
+        "140 crystal__blue_.png"
+      ],
+      "slash": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png",
+        "140 wand__wand_.png"
+      ],
+      "shoot": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "hurt": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png",
+        "009 crystal__blue_.png",
+        "140 crystal__blue_.png"
+      ],
+      "climb": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "idle": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "090 scarf__red_.png",
+        "060 leather__leather_.png",
+        "070 bracers__silver_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "jump": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "sit": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "emote": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "run": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "combat": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "1h_backslash": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ],
+      "1h_halfslash": [
+        "010 body_color__light_.png",
+        "100 human_female__light_.png",
+        "101 closing_eyes__light_.png",
+        "009 princess__blonde_.png",
+        "120 princess__blonde_.png",
+        "036 original_shortsleeves_overlay__blue_.png",
+        "038 overalls__green_.png",
+        "025 basic_boots__black_.png"
+      ]
+    },
+    "failed": {
+      "spellcast": [],
+      "thrust": [],
+      "walk": [],
+      "slash": [],
+      "shoot": [],
+      "hurt": [],
+      "climb": [],
+      "idle": [],
+      "jump": [],
+      "sit": [],
+      "emote": [],
+      "run": [],
+      "combat": [],
+      "1h_backslash": [],
+      "1h_halfslash": []
+    }
+  },
+  "customAnimations": {
+    "exported": {
+      "wheelchair": [
+        "0-2 wheelchair_.png",
+        "0-2 wheelchair_.png"
+      ],
+      "sit": [],
+      "slash_oversize": [
+        "140 weapon_sword_saber_.png",
+        "140 weapon_sword_saber_.png"
+      ],
+      "slash": [],
+      "walk_128": [
+        "140 weapon_sword_longsword_alt_.png",
+        "140 weapon_sword_longsword_alt_.png"
+      ],
+      "walk": [],
+      "slash_128": [
+        "140 weapon_sword_longsword_alt_.png",
+        "140 weapon_sword_longsword_alt_.png"
+      ],
+      "thrust_oversize": [
+        "140 weapon_magic_crystal_.png",
+        "140 weapon_magic_crystal_.png"
+      ],
+      "thrust": []
+    },
+    "failed": {
+      "sit": [
+        "120 hair_princess_.png",
+        "010 body_.png",
+        "025 feet_boots_basic_.png",
+        "036 torso_clothes_shortsleeves_.png",
+        "038 torso_aprons_overalls_.png",
+        "100 heads_human_female_.png",
+        "101 face_closing_.png",
+        "120 hair_princess_.png"
+      ],
+      "slash": [
+        "120 hair_princess_.png",
+        "010 body_.png",
+        "025 feet_boots_basic_.png",
+        "036 torso_clothes_shortsleeves_.png",
+        "038 torso_aprons_overalls_.png",
+        "055 torso_jacket_collared_.png",
+        "057 torso_jacket_frock_collar_.png",
+        "060 shoulders_leather_.png",
+        "070 arms_bracers_.png",
+        "090 neck_scarf_.png",
+        "100 heads_human_female_.png",
+        "101 face_closing_.png",
+        "120 hair_princess_.png",
+        "120 hair_princess_.png",
+        "010 body_.png",
+        "025 feet_boots_basic_.png",
+        "036 torso_clothes_shortsleeves_.png",
+        "038 torso_aprons_overalls_.png",
+        "055 torso_jacket_collared_.png",
+        "057 torso_jacket_frock_collar_.png",
+        "060 shoulders_leather_.png",
+        "070 arms_bracers_.png",
+        "090 neck_scarf_.png",
+        "100 heads_human_female_.png",
+        "101 face_closing_.png",
+        "120 hair_princess_.png"
+      ],
+      "walk": [
+        "120 hair_princess_.png",
+        "140 weapon_magic_crystal_.png",
+        "010 body_.png",
+        "025 feet_boots_basic_.png",
+        "036 torso_clothes_shortsleeves_.png",
+        "038 torso_aprons_overalls_.png",
+        "055 torso_jacket_collared_.png",
+        "057 torso_jacket_frock_collar_.png",
+        "060 shoulders_leather_.png",
+        "070 arms_bracers_.png",
+        "090 neck_scarf_.png",
+        "100 heads_human_female_.png",
+        "101 face_closing_.png",
+        "120 hair_princess_.png",
+        "140 weapon_magic_crystal_.png"
+      ],
+      "thrust": [
+        "120 hair_princess_.png",
+        "010 body_.png",
+        "025 feet_boots_basic_.png",
+        "036 torso_clothes_shortsleeves_.png",
+        "038 torso_aprons_overalls_.png",
+        "060 shoulders_leather_.png",
+        "070 arms_bracers_.png",
+        "090 neck_scarf_.png",
+        "100 heads_human_female_.png",
+        "101 face_closing_.png",
+        "120 hair_princess_.png"
+      ]
+    }
+  },
+  "frameSize": 64,
+  "frameCounts": {}
+}

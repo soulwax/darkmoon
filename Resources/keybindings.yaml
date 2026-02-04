@@ -1,0 +1,51 @@
+# File: Resources/keybindings.yaml
+
+# Keybindings Configuration File
+# All game keybindings are defined here
+# Format: action_name: [list of SDL keycode values or key names]
+
+# Movement keys (player movement)
+move_up:
+  - 119    # SDLK_W
+  - 1073741906  # SDLK_UP
+
+move_down:
+  - 115    # SDLK_S
+  - 1073741905  # SDLK_DOWN
+
+move_left:
+  - 97     # SDLK_A
+  - 1073741904  # SDLK_LEFT
+
+move_right:
+  - 100    # SDLK_D
+  - 1073741903  # SDLK_RIGHT
+
+# Game actions
+pause:
+  - 27     # SDLK_ESCAPE
+
+interact:
+  - 101    # SDLK_E
+
+jump:
+  - 32     # SDLK_SPACE
+
+fire:
+  - 13     # SDLK_RETURN
+
+# UI actions
+menu_up:
+  - 119    # SDLK_W
+  - 1073741906  # SDLK_UP
+
+menu_down:
+  - 115    # SDLK_S
+  - 1073741905  # SDLK_DOWN
+
+menu_select:
+  - 13     # SDLK_RETURN
+  - 32     # SDLK_SPACE
+
+menu_back:
+  - 27     # SDLK_ESCAPE

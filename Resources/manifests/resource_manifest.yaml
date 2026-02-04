@@ -1,0 +1,47 @@
+# File: Resources/manifests/resource_manifest.yaml
+# Tileset Manifest
+# Maps YAML definition files to their corresponding image files
+# All paths are relative to Resources/mystic_woods_2.2/sprites/tilesets/
+
+tilesets:
+  - name: "plains"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/plains.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/plains.png"
+    format: "atlas_coords"  # Uses atlas_x/atlas_y coordinates
+    
+  - name: "fences"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/fences.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/fences.png"
+    format: "atlas_coords"
+    
+  - name: "water"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/water.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/water-sheet.png"
+    format: "atlas_coords"
+    
+  - name: "decor_16x16"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/decor_16x16.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/decor_16x16.png"
+    format: "atlas_coords"
+    
+  - name: "decor_8x8"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/decor_8x8.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/decor_8x8.png"
+    format: "atlas_coords"
+    
+  - name: "walls"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/walls/walls.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/walls/walls.png"
+    format: "atlas_coords"
+    
+  - name: "carpet"
+    yaml: "../mystic_woods_2.2/sprites/tilesets/floors/carpet.yaml"
+    image: "../mystic_woods_2.2/sprites/tilesets/floors/carpet.png"
+    format: "atlas_coords"
+
+fonts:
+  - name: "renogare"
+    path: "../Fonts/Renogare.ttf.yaml"
+    type: "true_type"
+    file: "../Fonts/Renogare.ttf"
+    

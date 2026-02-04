@@ -1,0 +1,174 @@
+# File: Resources/SpiteSheets/characters/player.yaml
+
+meta:
+  tile_size: 48
+  frames: variant
+  frame_rate: 0
+  loop: false
+
+  variant: "player"
+
+  file:
+  - player.png
+
+tiles:
+- id: 0
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "down_running"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 144, width: 48, height: 48 }
+  - { x: 48, y: 144, width: 48, height: 48 }
+  - { x: 96, y: 144, width: 48, height: 48 }
+  - { x: 144, y: 144, width: 48, height: 48 }
+  - { x: 192, y: 144, width: 48, height: 48 }
+  - { x: 240, y: 144, width: 48, height: 48 }
+
+- id: 1
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "left_running"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 192, width: 48, height: 48 }
+  - { x: 48, y: 192, width: 48, height: 48 }
+  - { x: 96, y: 192, width: 48, height: 48 }
+  - { x: 144, y: 192, width: 48, height: 48 }
+  - { x: 192, y: 192, width: 48, height: 48 }
+  - { x: 240, y: 192, width: 48, height: 48 }
+
+
+- id: 2
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "up_running"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 240, width: 48, height: 48 }
+  - { x: 48, y: 240, width: 48, height: 48 }
+  - { x: 96, y: 240, width: 48, height: 48 }
+  - { x: 144, y: 240, width: 48, height: 48 }
+  - { x: 192, y: 240, width: 48, height: 48 }
+  - { x: 240, y: 240, width: 48, height: 48 }
+
+- id: 3
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "right_running"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 528, width: 48, height: 48 }
+  - { x: 48, y: 528, width: 48, height: 48 }
+  - { x: 96, y: 528, width: 48, height: 48 }
+  - { x: 144, y: 528, width: 48, height: 48 }
+  - { x: 192, y: 528, width: 48, height: 48 }
+  - { x: 240, y: 528, width: 48, height: 48 }
+
+
+- id: 4
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "down_idle"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 0, width: 48, height: 48 }
+  - { x: 48, y: 0, width: 48, height: 48 }
+  - { x: 96, y: 0, width: 48, height: 48 }
+  - { x: 144, y: 0, width: 48, height: 48 }
+  - { x: 192, y: 0, width: 48, height: 48 }
+  - { x: 240, y: 0, width: 48, height: 48 }
+
+- id: 5
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "left_idle"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 48, width: 48, height: 48 }
+  - { x: 48, y: 48, width: 48, height: 48 }
+  - { x: 96, y: 48, width: 48, height: 48 }
+  - { x: 144, y: 48, width: 48, height: 48 }
+  - { x: 192, y: 48, width: 48, height: 48 }
+  - { x: 240, y: 48, width: 48, height: 48 }
+
+- id: 6
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "up_idle"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 96, width: 48, height: 48 }
+  - { x: 48, y: 96, width: 48, height: 48 }
+  - { x: 96, y: 96, width: 48, height: 48 }
+  - { x: 144, y: 96, width: 48, height: 48 }
+  - { x: 192, y: 96, width: 48, height: 48 }
+  - { x: 240, y: 96, width: 48, height: 48 }
+
+- id: 7
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "attack_down"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 288, width: 48, height: 48 }
+  - { x: 48, y: 288, width: 48, height: 48 }
+  - { x: 96, y: 288, width: 48, height: 48 }
+  - { x: 144, y: 288, width: 48, height: 48 }
+
+- id: 8
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "attack_left"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 336, width: 48, height: 48 }
+  - { x: 48, y: 336, width: 48, height: 48 }
+  - { x: 96, y: 336, width: 48, height: 48 }
+  - { x: 144, y: 336, width: 48, height: 48 }
+
+- id: 9
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "attack_up"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 384, width: 48, height: 48 }
+  - { x: 48, y: 384, width: 48, height: 48 }
+  - { x: 96, y: 384, width: 48, height: 48 }
+  - { x: 144, y: 384, width: 48, height: 48 }
+
+
+# 624 4 frames each 48x48 at y=624, attack left
+- id: 10
+  start_x: 0
+  start_y: 0
+  end_frame: 0
+  direction: "attack_left"
+  frame_rate: 0
+  loop: false
+  frame_list:
+  - { x: 0, y: 624, width: 48, height: 48 }
+  - { x: 48, y: 624, width: 48, height: 48 }
+  - { x: 96, y: 624, width: 48, height: 48 }
+  - { x: 144, y: 624, width: 48, height: 48 }

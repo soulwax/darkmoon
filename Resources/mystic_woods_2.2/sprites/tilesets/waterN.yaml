@@ -1,0 +1,363 @@
+# File: Resources/mystic_woods_2.2/sprites/tilesets/waterN.yaml
+# Global animation info for this spritesheet
+
+meta:
+  tile_size: 16
+  frames: 6               # water1..water6
+  frame_rate: 8           # frames per second
+  loop: true
+  files: ["water1.png", "water2.png", "water3.png", "water4.png", "water5.png", "water6.png"]
+# Static definition of logical tiles (frame-independent)
+tiles:
+  - id: water_pool_inner
+    atlas_x: 16
+    atlas_y: 16
+    tile_size: 16
+    layer: ground
+    category: liquid
+    walkable: false
+    swimmable: true
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.0
+    has_collision: false
+    contains_transparency: false
+    alpha_mode: opaque
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: -1
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: water
+    impact_sound: water
+    ambient_sound: water
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#3F7FBF"
+    editor_icon: water
+    animation:
+      enabled: true
+      frames: 6        # uses all global frames
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_north
+    atlas_x: 16
+    atlas_y: 0
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_south
+    atlas_x: 16
+    atlas_y: 32
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_west
+    atlas_x: 0
+    atlas_y: 16
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_east
+    atlas_x: 32
+    atlas_y: 16
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_northwest
+    atlas_x: 0
+    atlas_y: 0
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore_corner
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_northeast
+    atlas_x: 32
+    atlas_y: 0
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore_corner
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_southwest
+    atlas_x: 0
+    atlas_y: 32
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore_corner
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_shore_southeast
+    atlas_x: 32
+    atlas_y: 32
+    tile_size: 16
+    layer: ground
+    category: terrain
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.2
+    has_collision: false
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: false
+    receives_shadow: true
+    z_bias: 0
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: false
+    concealment: 0.0
+    editor_color: "#2E8B57"
+    editor_icon: shore_corner
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]
+
+  - id: water_island_small
+    atlas_x: 48
+    atlas_y: 16
+    tile_size: 16
+    layer: obstacle
+    category: object
+    walkable: true
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: true
+    blocks_movement: false
+    movement_cost: 1.0
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [2, 6]
+    collision_size: [12, 10]
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 1
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: grass
+    impact_sound: null
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.1
+    editor_color: "#2E8B57"
+    editor_icon: island
+    animation:
+      enabled: true
+      frames: 6
+      frame_indices: [0,1,2,3,4,5]

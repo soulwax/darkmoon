@@ -1,0 +1,370 @@
+{
+  "contexts": [
+    {
+      "bindings": [
+        {
+          "action": "SwitchContext",
+          "sources": [
+            {
+              "code": 9,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "LoadBindings",
+          "sources": [
+            {
+              "code": 1073741887,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Back",
+          "sources": [
+            {
+              "code": 27,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            },
+            {
+              "code": 1,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Select",
+          "sources": [
+            {
+              "code": 13,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 32,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 0,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Down",
+          "sources": [
+            {
+              "code": 115,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741905,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 12,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "SaveBindings",
+          "sources": [
+            {
+              "code": 1073741886,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Up",
+          "sources": [
+            {
+              "code": 119,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741906,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 11,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        }
+      ],
+      "enabled": true,
+      "name": "Menu"
+    },
+    {
+      "bindings": [
+        {
+          "action": "SwitchContext",
+          "sources": [
+            {
+              "code": 9,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "SaveBindings",
+          "sources": [
+            {
+              "code": 1073741886,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Pause",
+          "sources": [
+            {
+              "code": 27,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 6,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            },
+            {
+              "code": 6,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Fire",
+          "sources": [
+            {
+              "code": 13,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "MouseButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "LoadBindings",
+          "sources": [
+            {
+              "code": 1073741887,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Jump",
+          "sources": [
+            {
+              "code": 32,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 0,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Interact",
+          "sources": [
+            {
+              "code": 101,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadButton"
+            }
+          ],
+          "type": "Button"
+        },
+        {
+          "action": "Move",
+          "sources": [
+            {
+              "code": 119,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": -1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 115,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 97,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": -1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 100,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741906,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": -1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741905,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741904,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": -1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 1073741903,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "Keyboard"
+            },
+            {
+              "code": 0,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadAxis"
+            },
+            {
+              "code": 1,
+              "deadZone": 0.15000000596046448,
+              "deviceIndex": 0,
+              "scale": 1.0,
+              "type": "GamepadAxis"
+            }
+          ],
+          "type": "Axis2D"
+        }
+      ],
+      "enabled": true,
+      "name": "Gameplay"
+    },
+    {
+      "bindings": [],
+      "enabled": true,
+      "name": "Default"
+    }
+  ]
+}

@@ -1,0 +1,214 @@
+# File: Resources/mystic_woods_2.2/sprites/tilesets/walls/walls.yaml
+
+meta:
+  tile_size: 16
+  frames: 1
+  frame_rate: 0
+  loop: false
+
+tiles:
+  # Top-left block: thin vertical wall and top frame around empty center
+  - id: wall_stone_vertical_thin
+    atlas_x: 0        # 16x32 pillar on far left
+    atlas_y: 0
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [2, 0]
+    collision_size: [12, 32]
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 2
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.0
+    editor_color: "#4A526A"
+    editor_icon: wall
+
+  - id: wall_stone_top_edge
+    atlas_x: 16       # 32x16 top edge (two tiles wide)
+    atlas_y: 0
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [0, 0]
+    collision_size: [32, 12]
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 2
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.0
+    editor_color: "#4A526A"
+    editor_icon: wall_top
+
+  - id: wall_stone_side_thick
+    atlas_x: 48       # 16x32 right side of window-like opening
+    atlas_y: 0
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [0, 0]
+    collision_size: [16, 32]
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 2
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.0
+    editor_color: "#4A526A"
+    editor_icon: wall
+
+  - id: wall_stone_pillar_small
+    atlas_x: 64       # small 16x16 cap/pillar on top right
+    atlas_y: 0
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [2, 0]
+    collision_size: [12, 16]
+    contains_transparency: true
+    alpha_mode: alpha_blend
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 3
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.0
+    editor_color: "#4A526A"
+    editor_icon: wall_pillar
+
+  # Bottom-left block: solid wall body and bottom edge
+  - id: wall_stone_body_wide
+    atlas_x: 0        # 48x32 solid block at bottom-left (three tiles)
+    atlas_y: 32
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [0, 0]
+    collision_size: [48, 32]
+    contains_transparency: false
+    alpha_mode: opaque
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 1
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.1
+    editor_color: "#4A526A"
+    editor_icon: wall_block
+
+  - id: wall_stone_body_tall
+    atlas_x: 48       # tall 16x32 column at lower-right
+    atlas_y: 32
+    tile_size: 16
+    layer: obstacle
+    category: wall
+    walkable: false
+    swimmable: false
+    climbable: false
+    crawlable: false
+    fly_through: false
+    blocks_movement: true
+    movement_cost: 999
+    has_collision: true
+    collision_shape: rect
+    collision_offset: [0, 0]
+    collision_size: [16, 32]
+    contains_transparency: false
+    alpha_mode: opaque
+    casts_shadow: true
+    receives_shadow: true
+    z_bias: 1
+    interactable: false
+    destructible: false
+    collectible: false
+    hit_points: 0
+    footstep_sound: stone
+    impact_sound: stone
+    ambient_sound: null
+    provides_cover: true
+    concealment: 0.1
+    editor_color: "#4A526A"
+    editor_icon: wall_column
