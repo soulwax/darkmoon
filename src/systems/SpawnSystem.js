@@ -7,9 +7,10 @@ import { eventBus, GameEvents } from '../core/EventBus.js';
 import { MathUtils } from '../core/Math.js';
 
 export class SpawnSystem {
-    constructor(config, camera) {
+    constructor(config, camera, assetLoader = null) {
         this.config = config;
         this.camera = camera;
+        this.assetLoader = assetLoader;
 
         // Spawn settings
         this.spawnRate = config.gameplay?.enemySpawnRate || 1.0;
@@ -37,8 +38,27 @@ export class SpawnSystem {
         // Max enemies
         this.maxEnemies = 50;
 
+        // Sprite images cache
+        this.spriteImages = {};
+        this._loadSprites();
+
         // Setup event listeners
         this._setupEvents();
+    }
+
+    /**
+     * Load enemy sprite images
+     */
+    _loadSprites() {
+        // Load skeleton sprite
+        const skeletonImg = new Image();
+        skeletonImg.src = '/SpiteSheets/characters/skeleton.png';
+        this.spriteImages.skeleton = skeletonImg;
+
+        // Load slime sprite
+        const slimeImg = new Image();
+        slimeImg.src = '/SpiteSheets/characters/slime.png';
+        this.spriteImages.slime = slimeImg;
     }
 
     _setupEvents() {
@@ -90,9 +110,11 @@ export class SpawnSystem {
      * Get available enemy types based on wave
      */
     getAvailableTypes() {
-        const types = ['basic'];
+        // Start with basic sprite enemies
+        const types = ['slime'];
 
-        if (this.waveNumber >= 2) types.push('fast');
+        if (this.waveNumber >= 1) types.push('skeleton');
+        if (this.waveNumber >= 2) types.push('basic', 'fast');
         if (this.waveNumber >= 4) types.push('tank');
         if (this.waveNumber >= 6) types.push('elite');
 
@@ -105,24 +127,26 @@ export class SpawnSystem {
     pickEnemyType() {
         const types = this.getAvailableTypes();
         const weights = {
-            basic: 50,
-            fast: 30,
-            tank: 15,
+            slime: 40,
+            skeleton: 35,
+            basic: 25,
+            fast: 20,
+            tank: 10,
             elite: 5
         };
 
         let totalWeight = 0;
         for (const type of types) {
-            totalWeight += weights[type];
+            totalWeight += weights[type] || 10;
         }
 
         let random = Math.random() * totalWeight;
         for (const type of types) {
-            random -= weights[type];
+            random -= weights[type] || 10;
             if (random <= 0) return type;
         }
 
-        return 'basic';
+        return 'slime';
     }
 
     /**
@@ -178,7 +202,10 @@ export class SpawnSystem {
         const pos = this.getSpawnPosition();
         const enemyType = type || this.pickEnemyType();
 
-        const enemy = new Enemy(pos.x, pos.y, enemyType, this.config);
+        // Get sprite image for this enemy type
+        const spriteImage = this.spriteImages[enemyType] || null;
+
+        const enemy = new Enemy(pos.x, pos.y, enemyType, this.config, spriteImage);
         enemy.setTarget(this.target);
 
         this.enemies.push(enemy);

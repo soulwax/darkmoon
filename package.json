@@ -15,7 +15,7 @@
     "vampire-survivors",
     "roguelike"
   ],
-  "author": "",
+  "author": "soulwax@github",
   "license": "GPL-3.0-only",
   "devDependencies": {
     "vite": "^5.0.0"

@@ -55,7 +55,7 @@ When you level up, choose from 3 random upgrades:
 
 ### File Structure
 
-```
+```shell
 ├── index.html          # Main HTML file
 ├── style.css           # Game styling and UI
 ├── game.js             # Core game loop and management
@@ -101,7 +101,7 @@ Created as a Vampire Survivors-inspired prototype for the Darkmoon game project.
 ## 🎮 Controls Summary
 
 | Key | Action |
-|-----|--------|
+| ----- | -------- |
 | W | Move Up |
 | A | Move Left |
 | S | Move Down |

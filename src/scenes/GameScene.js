@@ -11,6 +11,7 @@ import { ParticleSystem } from '../systems/ParticleSystem.js';
 import { MagicOrbs } from '../weapons/MagicOrbs.js';
 import { MagicMissiles } from '../weapons/MagicMissiles.js';
 import { LightningStrike } from '../weapons/LightningStrike.js';
+import { Sword } from '../weapons/Sword.js';
 import { eventBus, GameEvents } from '../core/EventBus.js';
 import { HUD } from '../ui/HUD.js';
 import { LevelUpScreen } from '../ui/LevelUpScreen.js';
@@ -119,11 +120,11 @@ export class GameScene extends Scene {
             playerSprite
         );
 
-        // Give starting weapon
-        this.player.addWeapon(MagicOrbs);
+        // Give starting weapon (Sword for melee combat)
+        this.player.addWeapon(Sword);
 
-        // Setup spawn system
-        this.spawnSystem = new SpawnSystem(this.config, this.camera);
+        // Setup spawn system with asset loader for enemy sprites
+        this.spawnSystem = new SpawnSystem(this.config, this.camera, this.assetLoader);
         this.spawnSystem.setTarget(this.player);
 
         // Setup camera to follow player
@@ -195,9 +196,10 @@ export class GameScene extends Scene {
     _generateUpgradeOptions() {
         const options = [];
         const weapons = [
-            { class: MagicOrbs, name: 'Magic Orbs', desc: 'Rotating orbs damage nearby enemies' },
-            { class: MagicMissiles, name: 'Magic Missiles', desc: 'Auto-targeting projectiles' },
-            { class: LightningStrike, name: 'Lightning Strike', desc: 'Area lightning attacks' }
+            { class: Sword, name: 'Sword', desc: 'Melee swing with knockback', icon: '🗡️' },
+            { class: MagicOrbs, name: 'Magic Orbs', desc: 'Rotating orbs damage nearby enemies', icon: '🔮' },
+            { class: MagicMissiles, name: 'Magic Missiles', desc: 'Auto-targeting projectiles', icon: '✨' },
+            { class: LightningStrike, name: 'Lightning Strike', desc: 'Area lightning attacks', icon: '⚡' }
         ];
 
         // Add new weapons player doesn't have
@@ -208,7 +210,7 @@ export class GameScene extends Scene {
                     weaponClass: weapon.class,
                     name: `New: ${weapon.name}`,
                     description: weapon.desc,
-                    icon: '⚔️'
+                    icon: weapon.icon || '⚔️'
                 });
             }
         }

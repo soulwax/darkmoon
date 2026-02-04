@@ -221,5 +221,36 @@ export const MathUtils = {
             return { x: x * factor, y: y * factor };
         }
         return { x, y };
+    },
+
+    // Normalize angle to [-PI, PI]
+    normalizeAngle(angle) {
+        while (angle > Math.PI) angle -= Math.PI * 2;
+        while (angle < -Math.PI) angle += Math.PI * 2;
+        return angle;
+    },
+
+    // Easing functions
+    easeOutQuad(t) {
+        return t * (2 - t);
+    },
+
+    easeInQuad(t) {
+        return t * t;
+    },
+
+    easeInOutQuad(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    },
+
+    easeOutElastic(t) {
+        const p = 0.3;
+        return Math.pow(2, -10 * t) * Math.sin((t - p / 4) * (2 * Math.PI) / p) + 1;
+    },
+
+    // Smooth step
+    smoothStep(edge0, edge1, x) {
+        const t = MathUtils.clamp((x - edge0) / (edge1 - edge0), 0, 1);
+        return t * t * (3 - 2 * t);
     }
 };
