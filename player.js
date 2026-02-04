@@ -1,6 +1,6 @@
 // File: player.js
-
 // Player Class
+
 class Player {
     constructor(x, y) {
         this.x = x;

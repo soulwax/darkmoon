@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/decor-grass.yaml
+# File: src/Resources/SpiteSheets/decor-grass.yaml
 
 meta:
   tile_size: 16

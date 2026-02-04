@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/objects.yaml
+# File: src/Resources/SpiteSheets/objects.yaml
 
 meta:
   tile_size: 16

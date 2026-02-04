@@ -1,6 +1,6 @@
 // File: enemy.js
-
 // Base Enemy Class
+
 class Enemy {
     constructor(x, y, type = 'basic') {
         this.x = x;

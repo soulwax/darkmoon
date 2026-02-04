@@ -12,24 +12,29 @@ A browser-based vampire survivors-like game prototype built with HTML5 Canvas an
 ## 🎯 Game Mechanics
 
 ### Core Gameplay
+
 - **Movement**: Use WASD keys for 8-directional movement
 - **Auto-Attacking**: Weapons automatically attack nearby enemies
 - **Survival**: Stay alive as long as possible while enemies spawn in increasing waves
 - **Progression**: Collect XP gems from defeated enemies to level up
 
 ### Weapons
+
 1. **Magic Orbs** - Orbs that rotate around the player, damaging enemies on contact
 2. **Magic Missiles** - Auto-targeting projectiles that shoot at the nearest enemy
 3. **Lightning Strike** - Area-of-effect attacks that strike random enemies
 
 ### Enemy Types
+
 - **Basic (Red)**: Standard enemy with balanced stats
 - **Fast (Green)**: Quick but fragile enemies
 - **Tank (Blue)**: Slow but very durable enemies
 - **Elite (Purple)**: Powerful enemies with high health and damage
 
 ### Upgrades
+
 When you level up, choose from 3 random upgrades:
+
 - **New Weapons**: Unlock Magic Orbs, Magic Missiles, or Lightning Strike
 - **Weapon Upgrades**: Increase damage, count, and effectiveness of existing weapons
 - **Stat Boosts**:
@@ -49,6 +54,7 @@ When you level up, choose from 3 random upgrades:
 ## 🛠️ Technical Details
 
 ### File Structure
+
 ```
 ├── index.html          # Main HTML file
 ├── style.css           # Game styling and UI
@@ -62,6 +68,7 @@ When you level up, choose from 3 random upgrades:
 ```
 
 ### Technologies Used
+
 - HTML5 Canvas for rendering
 - Vanilla JavaScript (ES6+)
 - CSS3 for UI styling
@@ -77,6 +84,7 @@ When you level up, choose from 3 random upgrades:
 ## 🚀 Future Enhancements
 
 Potential features for future versions:
+
 - More weapon types and combinations
 - Boss enemies at specific time intervals
 - Power-ups and temporary buffs

@@ -5,394 +5,449 @@ Darkmoon
 ├───enemy.js
 ├───game.js
 ├───index.html
+├───LICENSE.md
+├───package.json
 ├───particle.js
 ├───player.js
 ├───README.md
 ├───style.css
 ├───TODO.md
+├───tree.txt
 ├───ui.js
+├───vite.config.js
 ├───weapon.js
 ├───docs/
 │   └───RESOURCES.md
-├───Resources/
-│   ├───game.yaml
-│   ├───input_bindings.json
-│   ├───input_bindings_backup.json
-│   ├───input_bindings_test.json
-│   ├───keybindings.yaml
-│   ├───Fonts/
-│   │   ├───Renogare.otf
-│   │   └───Renogare.ttf
-│   ├───manifests/
-│   │   ├───README.md
-│   │   └───resource_manifest.yaml
-│   ├───mystic_woods_2.2/
-│   │   ├───read_me.txt
-│   │   └───sprites/
-│   │       └───tilesets/
-│   │           ├───water_decorations.png
-│   │           ├───water_lillies.png
-│   │           ├───waterN.yaml
-│   │           └───walls/
-│   │               ├───walls.png
-│   │               ├───walls.yaml
-│   │               ├───wooden_door.png
-│   │               └───wooden_door_b.png
-│   ├───saves/
-│   │   └───README.md
-│   ├───shaders/
-│   │   ├───basic.frag
-│   │   ├───basic.vert
-│   │   ├───bloom.frag
-│   │   ├───bloom.vert
-│   │   ├───blur.frag
-│   │   ├───blur.vert
-│   │   ├───crt.frag
-│   │   ├───crt.vert
-│   │   ├───damage_flash.frag
-│   │   ├───damage_flash.vert
-│   │   ├───day_night.frag
-│   │   ├───day_night.vert
-│   │   ├───dissolve.frag
-│   │   ├───dissolve.vert
-│   │   ├───fade.frag
-│   │   ├───fade.vert
-│   │   ├───freeze.frag
-│   │   ├───freeze.vert
-│   │   ├───ghost.frag
-│   │   ├───ghost.vert
-│   │   ├───glow.frag
-│   │   ├───glow.vert
-│   │   ├───grayscale.frag
-│   │   ├───grayscale.vert
-│   │   ├───heat_distortion.frag
-│   │   ├───heat_distortion.vert
-│   │   ├───kaleidoscope.frag
-│   │   ├───kaleidoscope.vert
-│   │   ├───lightning.frag
-│   │   ├───lightning.vert
-│   │   ├───outline.frag
-│   │   ├───outline.vert
-│   │   ├───palette_swap.frag
-│   │   ├───palette_swap.vert
-│   │   ├───pixelate.frag
-│   │   ├───pixelate.vert
-│   │   ├───poison.frag
-│   │   ├───poison.vert
-│   │   ├───portal.frag
-│   │   ├───portal.vert
-│   │   ├───psychedelic.frag
-│   │   ├───psychedelic.vert
-│   │   ├───README.md
-│   │   ├───sepia.frag
-│   │   ├───sepia.vert
-│   │   ├───shield.frag
-│   │   ├───shield.vert
-│   │   ├───sprite.frag
-│   │   ├───sprite.vert
-│   │   ├───sprite_color.frag
-│   │   ├───sprite_color.vert
-│   │   ├───sprite_debug.frag
-│   │   ├───sprite_fixed.vert
-│   │   ├───sprite_simple.vert
-│   │   ├───vignette.frag
-│   │   ├───vignette.vert
-│   │   ├───water.frag
-│   │   ├───water.vert
-│   │   └───compiled/
-│   │       ├───basic.frag.spv
-│   │       ├───basic.vert.spv
-│   │       ├───bloom.frag.spv
-│   │       ├───bloom.vert.spv
-│   │       ├───blur.frag.spv
-│   │       ├───blur.vert.spv
-│   │       ├───crt.frag.spv
-│   │       ├───crt.vert.spv
-│   │       ├───damage_flash.frag.spv
-│   │       ├───damage_flash.vert.spv
-│   │       ├───day_night.frag.spv
-│   │       ├───day_night.vert.spv
-│   │       ├───dissolve.frag.spv
-│   │       ├───dissolve.vert.spv
-│   │       ├───fade.frag.spv
-│   │       ├───fade.vert.spv
-│   │       ├───freeze.frag.spv
-│   │       ├───freeze.vert.spv
-│   │       ├───ghost.frag.spv
-│   │       ├───ghost.vert.spv
-│   │       ├───glow.frag.spv
-│   │       ├───glow.vert.spv
-│   │       ├───grayscale.frag.spv
-│   │       ├───grayscale.vert.spv
-│   │       ├───heat_distortion.frag.spv
-│   │       ├───heat_distortion.vert.spv
-│   │       ├───kaleidoscope.frag.spv
-│   │       ├───kaleidoscope.vert.spv
-│   │       ├───lightning.frag.spv
-│   │       ├───lightning.vert.spv
-│   │       ├───outline.frag.spv
-│   │       ├───outline.vert.spv
-│   │       ├───palette_swap.frag.spv
-│   │       ├───palette_swap.vert.spv
-│   │       ├───pixelate.frag.spv
-│   │       ├───pixelate.vert.spv
-│   │       ├───poison.frag.spv
-│   │       ├───poison.vert.spv
-│   │       ├───portal.frag.spv
-│   │       ├───portal.vert.spv
-│   │       ├───psychedelic.frag.spv
-│   │       ├───psychedelic.vert.spv
-│   │       ├───sepia.frag.spv
-│   │       ├───sepia.vert.spv
-│   │       ├───shield.frag.spv
-│   │       ├───shield.vert.spv
-│   │       ├───sprite.frag.spv
-│   │       ├───sprite.vert.spv
-│   │       ├───sprite_color.frag.spv
-│   │       ├───sprite_color.vert.spv
-│   │       ├───sprite_fixed.vert.spv
-│   │       ├───sprite_simple.vert.spv
-│   │       ├───vignette.frag.spv
-│   │       ├───vignette.vert.spv
-│   │       ├───water.frag.spv
-│   │       └───water.vert.spv
-│   └───SpiteSheets/
-│       ├───carpet_blue.png
-│       ├───carpet_blue.yaml
-│       ├───carpet_red.png
-│       ├───carpet_red.yaml
-│       ├───cliffs.png
-│       ├───cliffs.yaml
-│       ├───decor-grass.png
-│       ├───decor-grass.yaml
-│       ├───decor_8x8.png
-│       ├───decor_8x8.yaml
-│       ├───dirt-grass.png
-│       ├───dirt-grass.yaml
-│       ├───fences.png
-│       ├───fences.yaml
-│       ├───flowers.png
-│       ├───flowers.yaml
-│       ├───grass.png
-│       ├───grass.yaml
-│       ├───objects.png
-│       ├───objects.yaml
-│       ├───plains.png
-│       ├───plants.png
-│       ├───shrooms.png
-│       ├───shrooms.yaml
-│       ├───water-sheet.yaml
-│       ├───water1.png
-│       ├───water2.png
-│       ├───water3.png
-│       ├───water4.png
-│       ├───water5.png
-│       ├───water6.png
-│       ├───characters/
-│       │   ├───player.png
-│       │   ├───player.yaml
-│       │   ├───player_dummy.png
-│       │   ├───rpc_char_main.json
-│       │   ├───skeleton.png
-│       │   ├───skeleton_swordless.png
-│       │   ├───slime.png
-│       │   ├───main_character/
-│       │   │   └───female/
-│       │   │       ├───character.json
-│       │   │       ├───credits/
-│       │   │       │   ├───credits.csv
-│       │   │       │   ├───credits.txt
-│       │   │       │   └───metadata.json
-│       │   │       ├───custom/
-│       │   │       │   ├───slash_128/
-│       │   │       │   │   └───140 weapon_sword_longsword_alt_.png
-│       │   │       │   ├───slash_oversize/
-│       │   │       │   │   └───140 weapon_sword_saber_.png
-│       │   │       │   ├───thrust_oversize/
-│       │   │       │   │   └───140 weapon_magic_crystal_.png
-│       │   │       │   ├───walk_128/
-│       │   │       │   │   └───140 weapon_sword_longsword_alt_.png
-│       │   │       │   └───wheelchair/
-│       │   │       │       └───0-2 wheelchair_.png
-│       │   │       └───standard/
-│       │   │           ├───1h_backslash/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───1h_halfslash/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───climb/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───combat/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───emote/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───hurt/
-│       │   │           │   ├───009 crystal__blue_.png.png
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   ├───120 princess__blonde_.png.png
-│       │   │           │   └───140 crystal__blue_.png.png
-│       │   │           ├───idle/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───jump/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───run/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───shoot/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───sit/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───slash/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   ├───120 princess__blonde_.png.png
-│       │   │           │   └───140 wand__wand_.png.png
-│       │   │           ├───spellcast/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           ├───thrust/
-│       │   │           │   ├───009 princess__blonde_.png.png
-│       │   │           │   ├───010 body_color__light_.png.png
-│       │   │           │   ├───025 basic_boots__black_.png.png
-│       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │           │   ├───038 overalls__green_.png.png
-│       │   │           │   ├───060 leather__leather_.png.png
-│       │   │           │   ├───070 bracers__silver_.png.png
-│       │   │           │   ├───090 scarf__red_.png.png
-│       │   │           │   ├───100 human_female__light_.png.png
-│       │   │           │   ├───101 closing_eyes__light_.png.png
-│       │   │           │   └───120 princess__blonde_.png.png
-│       │   │           └───walk/
-│       │   │               ├───009 crystal__blue_.png.png
-│       │   │               ├───009 princess__blonde_.png.png
-│       │   │               ├───010 body_color__light_.png.png
-│       │   │               ├───025 basic_boots__black_.png.png
-│       │   │               ├───036 original_shortsleeves_overlay__blue_.png.png
-│       │   │               ├───038 overalls__green_.png.png
-│       │   │               ├───060 leather__leather_.png.png
-│       │   │               ├───070 bracers__silver_.png.png
-│       │   │               ├───090 scarf__red_.png.png
-│       │   │               ├───100 human_female__light_.png.png
-│       │   │               ├───101 closing_eyes__light_.png.png
-│       │   │               ├───120 princess__blonde_.png.png
-│       │   │               └───140 crystal__blue_.png.png
-│       │   └───particles/
-│       │       └───dust_particles_01.png
-│       ├───floors/
-│       │   ├───carpet.png
-│       │   ├───carpet.yaml
-│       │   ├───flooring.png
-│       │   └───wooden.png
-│       └───objects/
-│           ├───chest_01.png
-│           ├───chest_02.png
-│           ├───objects.png
-│           ├───rock_in_water_01-sheet.png
-│           ├───rock_in_water_01.png
-│           ├───rock_in_water_02.png
-│           ├───rock_in_water_03.png
-│           ├───rock_in_water_04.png
-│           ├───rock_in_water_05.png
-│           ├───rock_in_water_06.png
-│           └───rock_in_water_frames.yaml
 └───src/
+    ├───Game.js
+    ├───main.js
+    ├───assets/
+    │   ├───AssetLoader.js
+    │   ├───AssetManifest.js
+    │   └───SpriteSheet.js
+    ├───config/
+    │   ├───ConfigLoader.js
+    │   └───GameConfig.js
+    ├───core/
+    │   ├───EventBus.js
+    │   ├───GameLoop.js
+    │   └───Math.js
+    ├───ecs/
+    │   ├───Component.js
+    │   ├───Entity.js
+    │   └───components/
+    │       ├───AnimatorComponent.js
+    │       ├───ColliderComponent.js
+    │       ├───HealthComponent.js
+    │       ├───MovementComponent.js
+    │       └───SpriteComponent.js
+    ├───entities/
+    │   ├───Enemy.js
+    │   ├───Player.js
+    │   ├───Projectile.js
+    │   └───XPGem.js
+    ├───graphics/
+    │   ├───AnimatedSprite.js
+    │   ├───Camera.js
+    │   ├───Renderer.js
+    │   └───TileMap.js
+    ├───input/
+    │   └───InputManager.js
+    ├───Resources/
+    │   ├───game.yaml
+    │   ├───input_bindings.json
+    │   ├───input_bindings_backup.json
+    │   ├───input_bindings_test.json
+    │   ├───keybindings.yaml
+    │   ├───Fonts/
+    │   │   ├───Renogare.otf
+    │   │   └───Renogare.ttf
+    │   ├───manifests/
+    │   │   ├───README.md
+    │   │   └───resource_manifest.yaml
+    │   ├───mystic_woods_2.2/
+    │   │   ├───read_me.txt
+    │   │   └───sprites/
+    │   │       └───tilesets/
+    │   │           ├───water_decorations.png
+    │   │           ├───water_lillies.png
+    │   │           ├───waterN.yaml
+    │   │           └───walls/
+    │   │               ├───walls.png
+    │   │               ├───walls.yaml
+    │   │               ├───wooden_door.png
+    │   │               └───wooden_door_b.png
+    │   ├───saves/
+    │   │   └───README.md
+    │   ├───shaders/
+    │   │   ├───basic.frag
+    │   │   ├───basic.vert
+    │   │   ├───bloom.frag
+    │   │   ├───bloom.vert
+    │   │   ├───blur.frag
+    │   │   ├───blur.vert
+    │   │   ├───crt.frag
+    │   │   ├───crt.vert
+    │   │   ├───damage_flash.frag
+    │   │   ├───damage_flash.vert
+    │   │   ├───day_night.frag
+    │   │   ├───day_night.vert
+    │   │   ├───dissolve.frag
+    │   │   ├───dissolve.vert
+    │   │   ├───fade.frag
+    │   │   ├───fade.vert
+    │   │   ├───freeze.frag
+    │   │   ├───freeze.vert
+    │   │   ├───ghost.frag
+    │   │   ├───ghost.vert
+    │   │   ├───glow.frag
+    │   │   ├───glow.vert
+    │   │   ├───grayscale.frag
+    │   │   ├───grayscale.vert
+    │   │   ├───heat_distortion.frag
+    │   │   ├───heat_distortion.vert
+    │   │   ├───kaleidoscope.frag
+    │   │   ├───kaleidoscope.vert
+    │   │   ├───lightning.frag
+    │   │   ├───lightning.vert
+    │   │   ├───outline.frag
+    │   │   ├───outline.vert
+    │   │   ├───palette_swap.frag
+    │   │   ├───palette_swap.vert
+    │   │   ├───pixelate.frag
+    │   │   ├───pixelate.vert
+    │   │   ├───poison.frag
+    │   │   ├───poison.vert
+    │   │   ├───portal.frag
+    │   │   ├───portal.vert
+    │   │   ├───psychedelic.frag
+    │   │   ├───psychedelic.vert
+    │   │   ├───README.md
+    │   │   ├───sepia.frag
+    │   │   ├───sepia.vert
+    │   │   ├───shield.frag
+    │   │   ├───shield.vert
+    │   │   ├───sprite.frag
+    │   │   ├───sprite.vert
+    │   │   ├───sprite_color.frag
+    │   │   ├───sprite_color.vert
+    │   │   ├───sprite_debug.frag
+    │   │   ├───sprite_fixed.vert
+    │   │   ├───sprite_simple.vert
+    │   │   ├───vignette.frag
+    │   │   ├───vignette.vert
+    │   │   ├───water.frag
+    │   │   ├───water.vert
+    │   │   └───compiled/
+    │   │       ├───basic.frag.spv
+    │   │       ├───basic.vert.spv
+    │   │       ├───bloom.frag.spv
+    │   │       ├───bloom.vert.spv
+    │   │       ├───blur.frag.spv
+    │   │       ├───blur.vert.spv
+    │   │       ├───crt.frag.spv
+    │   │       ├───crt.vert.spv
+    │   │       ├───damage_flash.frag.spv
+    │   │       ├───damage_flash.vert.spv
+    │   │       ├───day_night.frag.spv
+    │   │       ├───day_night.vert.spv
+    │   │       ├───dissolve.frag.spv
+    │   │       ├───dissolve.vert.spv
+    │   │       ├───fade.frag.spv
+    │   │       ├───fade.vert.spv
+    │   │       ├───freeze.frag.spv
+    │   │       ├───freeze.vert.spv
+    │   │       ├───ghost.frag.spv
+    │   │       ├───ghost.vert.spv
+    │   │       ├───glow.frag.spv
+    │   │       ├───glow.vert.spv
+    │   │       ├───grayscale.frag.spv
+    │   │       ├───grayscale.vert.spv
+    │   │       ├───heat_distortion.frag.spv
+    │   │       ├───heat_distortion.vert.spv
+    │   │       ├───kaleidoscope.frag.spv
+    │   │       ├───kaleidoscope.vert.spv
+    │   │       ├───lightning.frag.spv
+    │   │       ├───lightning.vert.spv
+    │   │       ├───outline.frag.spv
+    │   │       ├───outline.vert.spv
+    │   │       ├───palette_swap.frag.spv
+    │   │       ├───palette_swap.vert.spv
+    │   │       ├───pixelate.frag.spv
+    │   │       ├───pixelate.vert.spv
+    │   │       ├───poison.frag.spv
+    │   │       ├───poison.vert.spv
+    │   │       ├───portal.frag.spv
+    │   │       ├───portal.vert.spv
+    │   │       ├───psychedelic.frag.spv
+    │   │       ├───psychedelic.vert.spv
+    │   │       ├───sepia.frag.spv
+    │   │       ├───sepia.vert.spv
+    │   │       ├───shield.frag.spv
+    │   │       ├───shield.vert.spv
+    │   │       ├───sprite.frag.spv
+    │   │       ├───sprite.vert.spv
+    │   │       ├───sprite_color.frag.spv
+    │   │       ├───sprite_color.vert.spv
+    │   │       ├───sprite_fixed.vert.spv
+    │   │       ├───sprite_simple.vert.spv
+    │   │       ├───vignette.frag.spv
+    │   │       ├───vignette.vert.spv
+    │   │       ├───water.frag.spv
+    │   │       └───water.vert.spv
+    │   └───SpiteSheets/
+    │       ├───carpet_blue.png
+    │       ├───carpet_blue.yaml
+    │       ├───carpet_red.png
+    │       ├───carpet_red.yaml
+    │       ├───cliffs.png
+    │       ├───cliffs.yaml
+    │       ├───decor-grass.png
+    │       ├───decor-grass.yaml
+    │       ├───decor_8x8.png
+    │       ├───decor_8x8.yaml
+    │       ├───dirt-grass.png
+    │       ├───dirt-grass.yaml
+    │       ├───fences.png
+    │       ├───fences.yaml
+    │       ├───flowers.png
+    │       ├───flowers.yaml
+    │       ├───grass.png
+    │       ├───grass.yaml
+    │       ├───objects.png
+    │       ├───objects.yaml
+    │       ├───plains.png
+    │       ├───plants.png
+    │       ├───shrooms.png
+    │       ├───shrooms.yaml
+    │       ├───water-sheet.yaml
+    │       ├───water1.png
+    │       ├───water2.png
+    │       ├───water3.png
+    │       ├───water4.png
+    │       ├───water5.png
+    │       ├───water6.png
+    │       ├───characters/
+    │       │   ├───player.png
+    │       │   ├───player.yaml
+    │       │   ├───player_dummy.png
+    │       │   ├───rpc_char_main.json
+    │       │   ├───skeleton.png
+    │       │   ├───skeleton_swordless.png
+    │       │   ├───slime.png
+    │       │   ├───main_character/
+    │       │   │   └───female/
+    │       │   │       ├───character.json
+    │       │   │       ├───credits/
+    │       │   │       │   ├───credits.csv
+    │       │   │       │   ├───credits.txt
+    │       │   │       │   └───metadata.json
+    │       │   │       ├───custom/
+    │       │   │       │   ├───slash_128/
+    │       │   │       │   │   └───140 weapon_sword_longsword_alt_.png
+    │       │   │       │   ├───slash_oversize/
+    │       │   │       │   │   └───140 weapon_sword_saber_.png
+    │       │   │       │   ├───thrust_oversize/
+    │       │   │       │   │   └───140 weapon_magic_crystal_.png
+    │       │   │       │   ├───walk_128/
+    │       │   │       │   │   └───140 weapon_sword_longsword_alt_.png
+    │       │   │       │   └───wheelchair/
+    │       │   │       │       └───0-2 wheelchair_.png
+    │       │   │       └───standard/
+    │       │   │           ├───1h_backslash/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───1h_halfslash/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───climb/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───combat/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───emote/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───hurt/
+    │       │   │           │   ├───009 crystal__blue_.png.png
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   ├───120 princess__blonde_.png.png
+    │       │   │           │   └───140 crystal__blue_.png.png
+    │       │   │           ├───idle/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───jump/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───run/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───shoot/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───sit/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───slash/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   ├───120 princess__blonde_.png.png
+    │       │   │           │   └───140 wand__wand_.png.png
+    │       │   │           ├───spellcast/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           ├───thrust/
+    │       │   │           │   ├───009 princess__blonde_.png.png
+    │       │   │           │   ├───010 body_color__light_.png.png
+    │       │   │           │   ├───025 basic_boots__black_.png.png
+    │       │   │           │   ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │           │   ├───038 overalls__green_.png.png
+    │       │   │           │   ├───060 leather__leather_.png.png
+    │       │   │           │   ├───070 bracers__silver_.png.png
+    │       │   │           │   ├───090 scarf__red_.png.png
+    │       │   │           │   ├───100 human_female__light_.png.png
+    │       │   │           │   ├───101 closing_eyes__light_.png.png
+    │       │   │           │   └───120 princess__blonde_.png.png
+    │       │   │           └───walk/
+    │       │   │               ├───009 crystal__blue_.png.png
+    │       │   │               ├───009 princess__blonde_.png.png
+    │       │   │               ├───010 body_color__light_.png.png
+    │       │   │               ├───025 basic_boots__black_.png.png
+    │       │   │               ├───036 original_shortsleeves_overlay__blue_.png.png
+    │       │   │               ├───038 overalls__green_.png.png
+    │       │   │               ├───060 leather__leather_.png.png
+    │       │   │               ├───070 bracers__silver_.png.png
+    │       │   │               ├───090 scarf__red_.png.png
+    │       │   │               ├───100 human_female__light_.png.png
+    │       │   │               ├───101 closing_eyes__light_.png.png
+    │       │   │               ├───120 princess__blonde_.png.png
+    │       │   │               └───140 crystal__blue_.png.png
+    │       │   └───particles/
+    │       │       └───dust_particles_01.png
+    │       ├───floors/
+    │       │   ├───carpet.png
+    │       │   ├───carpet.yaml
+    │       │   ├───flooring.png
+    │       │   └───wooden.png
+    │       └───objects/
+    │           ├───chest_01.png
+    │           ├───chest_02.png
+    │           ├───objects.png
+    │           ├───rock_in_water_01-sheet.png
+    │           ├───rock_in_water_01.png
+    │           ├───rock_in_water_02.png
+    │           ├───rock_in_water_03.png
+    │           ├───rock_in_water_04.png
+    │           ├───rock_in_water_05.png
+    │           ├───rock_in_water_06.png
+    │           └───rock_in_water_frames.yaml
+    ├───scenes/
+    │   ├───GameScene.js
+    │   ├───Scene.js
+    │   └───SceneManager.js
+    ├───systems/
+    │   ├───ParticleSystem.js
+    │   ├───SpawnSystem.js
+    │   └───UpgradeSystem.js
+    ├───ui/
+    │   ├───HUD.js
+    │   ├───LevelUpScreen.js
+    │   └───Minimap.js
+    └───weapons/
+        ├───LightningStrike.js
+        ├───MagicMissiles.js
+        ├───MagicOrbs.js
+        └───Weapon.js

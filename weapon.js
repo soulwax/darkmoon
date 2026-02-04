@@ -1,6 +1,6 @@
 // File: weapon.js
-
 // Base Weapon Class
+
 class Weapon {
     constructor(player) {
         this.player = player;

@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/carpet_blue.yaml
+# File: src/Resources/SpiteSheets/carpet_blue.yaml
 
 meta:
   tile_size: 16

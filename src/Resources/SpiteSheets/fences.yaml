@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/fences.yaml
+# File: src/Resources/SpiteSheets/fences.yaml
 
 meta:
   tile_size: 16

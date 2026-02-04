@@ -1,4 +1,4 @@
-# File: Resources/mystic_woods_2.2/sprites/tilesets/walls/walls.yaml
+# File: src/Resources/mystic_woods_2.2/sprites/tilesets/walls/walls.yaml
 
 meta:
   tile_size: 16

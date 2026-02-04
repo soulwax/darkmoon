@@ -1,6 +1,6 @@
 // File: particle.js
-
 // Particle System for visual effects
+
 class Particle {
     constructor(x, y, color, size, velocityX, velocityY, lifetime) {
         this.x = x;

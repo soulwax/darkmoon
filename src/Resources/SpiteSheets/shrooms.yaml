@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/shrooms.yaml
+# File: src/Resources/SpiteSheets/shrooms.yaml
 
 meta:
   tile_size: 16

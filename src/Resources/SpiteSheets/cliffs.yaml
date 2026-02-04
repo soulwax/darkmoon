@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/cliffs.yaml
+# File: src/Resources/SpiteSheets/cliffs.yaml
 
 meta:
   tile_size: 16

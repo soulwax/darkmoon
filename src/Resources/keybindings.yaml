@@ -1,4 +1,4 @@
-# File: Resources/keybindings.yaml
+# File: src/Resources/keybindings.yaml
 # Keybindings Configuration File
 # All game keybindings are defined here
 # Format: action_name: [list of SDL keycode values or key names]

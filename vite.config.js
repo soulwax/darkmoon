@@ -1,3 +1,5 @@
+// File: vite.config.js
+
 // Vite configuration for Darkmoon game
 import { defineConfig } from 'vite';
 

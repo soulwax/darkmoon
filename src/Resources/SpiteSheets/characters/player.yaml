@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/characters/player.yaml
+# File: src/Resources/SpiteSheets/characters/player.yaml
 
 meta:
   tile_size: 48

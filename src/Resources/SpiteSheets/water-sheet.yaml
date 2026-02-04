@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/water-sheet.yaml
+# File: src/Resources/SpiteSheets/water-sheet.yaml
 
 meta:
   tile_size: 16

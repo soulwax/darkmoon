@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/flowers.yaml
+# File: src/Resources/SpiteSheets/flowers.yaml
 
 meta:
   tile_size: 16

@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/floors/carpet.yaml
+# File: src/Resources/SpiteSheets/floors/carpet.yaml
 
 meta:
   tile_size: 16

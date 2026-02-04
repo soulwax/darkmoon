@@ -1,6 +1,6 @@
 // File: game.js
-
 // Main Game Class
+
 class Game {
     constructor() {
         this.canvas = document.getElementById('gameCanvas');

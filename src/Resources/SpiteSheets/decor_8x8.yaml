@@ -1,4 +1,4 @@
-# File: Resources/SpiteSheets/decor_8x8.yaml
+# File: src/Resources/SpiteSheets/decor_8x8.yaml
 
 meta:
   tile_size: 8
