@@ -13,10 +13,18 @@ export class Longsword extends Weapon {
 
         this.baseDamage = options.damage ?? 45;
         this.slashLength = options.slashLength || 96;
-        this.slashWidth = options.slashWidth || 20;
+        this.slashWidth = options.slashWidth || 8;
         this.slashOffset = options.slashOffset || 28;
         this.knockback = options.knockback || 320;
         this.particleSystem = options.particleSystem || null;
+
+        // Slash visual state
+        this.slashActive = false;
+        this.slashTimer = 0;
+        this.slashDuration = options.slashDuration || 0.08;
+        this.slashDirection = 'down';
+        this.slashX = 0;
+        this.slashY = 0;
     }
 
     _applyUpgrade() {
@@ -37,6 +45,13 @@ export class Longsword extends Weapon {
     update(deltaTime) {
         if (this.cooldownTimer > 0) {
             this.cooldownTimer -= deltaTime;
+        }
+
+        if (this.slashActive) {
+            this.slashTimer -= deltaTime;
+            if (this.slashTimer <= 0) {
+                this.slashActive = false;
+            }
         }
     }
 
@@ -72,6 +87,13 @@ export class Longsword extends Weapon {
             }
         }
 
+        // Record slash visual
+        this.slashActive = true;
+        this.slashTimer = this.slashDuration;
+        this.slashDirection = facing === 'up' ? 'up' : 'down';
+        this.slashX = slashX;
+        this.slashY = slashY;
+
         // Play attack animation (vertical slash)
         const animator = this.owner.getComponent?.('AnimatorComponent');
         if (animator) {
@@ -85,5 +107,49 @@ export class Longsword extends Weapon {
             width: this.slashWidth,
             direction: facing === 'up' ? 'up' : 'down'
         });
+    }
+
+    draw(ctx) {
+        if (!this.slashActive) return;
+
+        const progress = 1 - (this.slashTimer / this.slashDuration);
+        const alpha = Math.max(0, 1 - progress);
+        const dir = this.slashDirection === 'up' ? -1 : 1;
+        const slide = progress * 10;
+
+        const drawX = this.slashX;
+        const drawY = this.slashY + dir * slide + dir * (this.slashLength * 0.15);
+
+        const halfW = this.slashWidth / 2;
+        const halfL = this.slashLength / 2;
+
+        ctx.save();
+        ctx.translate(drawX, drawY);
+        ctx.globalAlpha = alpha;
+
+        // Outer glow
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillRect(-halfW * 1.6, -halfL * 0.95, halfW * 3.2, halfL * 1.9);
+
+        // Core blade streak
+        const gradient = ctx.createLinearGradient(-halfW, 0, halfW, 0);
+        gradient.addColorStop(0, 'rgba(255,255,255,0)');
+        gradient.addColorStop(0.35, 'rgba(210,225,255,0.9)');
+        gradient.addColorStop(0.5, 'rgba(255,255,255,1)');
+        gradient.addColorStop(0.65, 'rgba(200,210,245,0.85)');
+        gradient.addColorStop(1, 'rgba(255,255,255,0)');
+
+        ctx.fillStyle = gradient;
+        ctx.fillRect(-halfW, -halfL, this.slashWidth, this.slashLength);
+
+        // Edge highlight
+        ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(halfW - 0.5, -halfL);
+        ctx.lineTo(halfW - 0.5, halfL);
+        ctx.stroke();
+
+        ctx.restore();
     }
 }

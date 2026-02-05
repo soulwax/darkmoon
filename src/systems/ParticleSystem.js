@@ -270,118 +270,78 @@ export class ParticleSystem {
     createSwordSlashVertical(x, y, options = {}) {
         if (!this.enabled) return;
 
-        const length = options.length || 90;
-        const width = options.width || 20;
+        const length = options.length || 110;
+        const width = options.width || 8;
         const direction = options.direction === 'up' ? 'up' : 'down';
-        const color = options.color || '#cfe8ff';
+        const color = options.color || '#f3f7ff';
         const glow = options.glow || '#ffffff';
-        const count = options.count || 18;
-        const arc = options.arc || Math.PI * 0.9;
-        const radius = options.radius || length * 0.55;
-        const segments = options.segments || 12;
+        const speedY = direction === 'up' ? -10 : 10;
+        const tipOffset = direction === 'up' ? -length / 2 : length / 2;
 
-        const halfLength = length / 2;
-        const halfWidth = width / 2;
-        const baseAngle = direction === 'up' ? -Math.PI / 2 : Math.PI / 2;
-
-        // Core slash flash
+        // Sharp blade streak (outer glow)
         this.particles.push(new Particle(x, y, {
             vx: 0,
-            vy: direction === 'up' ? -20 : 20,
-            width: width * 1.1,
-            height: length * 0.9,
-            color: color,
-            alpha: 0.65,
-            alphaDecay: 4,
+            vy: speedY,
+            width: width * 1.9,
+            height: length * 0.95,
+            color: glow,
+            alpha: 0.25,
+            alphaDecay: 6,
             lifetime: 0.12
         }));
 
-        // Crescent swing (arc)
-        const startAngle = baseAngle - arc / 2;
-        const endAngle = baseAngle + arc / 2;
-        for (let i = 0; i < segments && this.particles.length < this.maxParticles; i++) {
-            const t = segments === 1 ? 0.5 : i / (segments - 1);
-            const angle = MathUtils.lerp(startAngle, endAngle, t);
-            const tangent = angle + Math.PI / 2;
-            const alpha = 0.9 * (1 - Math.abs(t - 0.5) * 0.8);
+        // Blade core
+        this.particles.push(new Particle(x, y, {
+            vx: 0,
+            vy: speedY,
+            width: width,
+            height: length,
+            color: color,
+            alpha: 0.95,
+            alphaDecay: 7,
+            lifetime: 0.11
+        }));
 
-            const px = x + Math.cos(angle) * radius;
-            const py = y + Math.sin(angle) * radius;
+        // Edge highlight
+        this.particles.push(new Particle(x + width * 0.15, y, {
+            vx: 0,
+            vy: speedY,
+            width: width * 0.35,
+            height: length * 0.9,
+            color: '#ffffff',
+            alpha: 0.9,
+            alphaDecay: 9,
+            lifetime: 0.09
+        }));
 
-            const outerWidth = MathUtils.lerp(width * 0.7, width * 0.4, t);
-            const outerHeight = MathUtils.lerp(length * 0.32, length * 0.18, t);
-            const innerWidth = outerWidth * 0.55;
-            const innerHeight = outerHeight * 0.8;
+        // Subtle motion blur (offset duplicate)
+        this.particles.push(new Particle(x + width * 0.4, y + speedY * 2, {
+            vx: 0,
+            vy: speedY * 1.2,
+            width: width * 0.7,
+            height: length * 0.85,
+            color: glow,
+            alpha: 0.22,
+            alphaDecay: 7,
+            lifetime: 0.1
+        }));
 
-            // Glow layer
-            this.particles.push(new Particle(px, py, {
-                vx: Math.cos(tangent) * MathUtils.random(15, 45),
-                vy: Math.sin(tangent) * MathUtils.random(15, 45),
-                width: outerWidth,
-                height: outerHeight,
-                color: glow,
-                alpha: alpha * 0.35,
-                alphaDecay: 5,
-                lifetime: 0.18,
-                friction: 0.9,
-                rotation: tangent
-            }));
-
-            // Core layer
-            this.particles.push(new Particle(px, py, {
-                vx: Math.cos(tangent) * MathUtils.random(20, 60),
-                vy: Math.sin(tangent) * MathUtils.random(20, 60),
-                width: innerWidth,
-                height: innerHeight,
-                color: color,
-                alpha: alpha,
-                alphaDecay: 6,
-                lifetime: 0.16,
-                friction: 0.88,
-                rotation: tangent
-            }));
-        }
-
-        // Sparks along the slash
-        for (let i = 0; i < count && this.particles.length < this.maxParticles; i++) {
-            const offsetX = MathUtils.random(-halfWidth, halfWidth);
-            const offsetY = MathUtils.random(-halfLength, halfLength);
-            const angle = baseAngle + MathUtils.random(-0.45, 0.45);
-            const speed = MathUtils.random(140, 280);
-
-            this.particles.push(new Particle(x + offsetX, y + offsetY, {
-                vx: Math.cos(angle) * speed + MathUtils.random(-40, 40),
-                vy: Math.sin(angle) * speed,
-                width: MathUtils.random(2, 4),
-                height: MathUtils.random(8, 18),
-                color: glow,
-                alpha: 1,
-                alphaDecay: 4,
-                lifetime: MathUtils.random(0.15, 0.35),
-                gravity: 280,
-                friction: 0.88,
-                rotation: angle + MathUtils.random(-0.5, 0.5),
-                rotationSpeed: MathUtils.random(-8, 8)
-            }));
-        }
-
-        // Tip burst at end of arc
-        const tipAngle = endAngle;
-        const tipX = x + Math.cos(tipAngle) * radius;
-        const tipY = y + Math.sin(tipAngle) * radius;
-        for (let i = 0; i < 6 && this.particles.length < this.maxParticles; i++) {
-            const angle = tipAngle + MathUtils.random(-0.6, 0.6);
-            const speed = MathUtils.random(120, 220);
+        // Tip spark (precise point)
+        const tipX = x;
+        const tipY = y + tipOffset;
+        for (let i = 0; i < 4 && this.particles.length < this.maxParticles; i++) {
+            const angle = (direction === 'up' ? -Math.PI / 2 : Math.PI / 2) + MathUtils.random(-0.35, 0.35);
+            const speed = MathUtils.random(120, 180);
             this.particles.push(new Particle(tipX, tipY, {
                 vx: Math.cos(angle) * speed,
                 vy: Math.sin(angle) * speed,
-                width: MathUtils.random(2, 4),
-                height: MathUtils.random(6, 14),
-                color: glow,
-                alpha: 0.9,
-                alphaDecay: 5,
-                lifetime: MathUtils.random(0.12, 0.25),
-                friction: 0.86,
+                width: MathUtils.random(2, 3),
+                height: MathUtils.random(6, 10),
+                color: '#ffffff',
+                alpha: 0.85,
+                alphaDecay: 8,
+                lifetime: 0.08,
+                friction: 0.85,
                 rotation: angle
             }));
         }
