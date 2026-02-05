@@ -562,8 +562,22 @@ export class GameScene extends Scene {
     }
 
     draw(ctx: CanvasRenderingContext2D, alpha: number) {
+        // Debug: Draw a test rectangle before camera transform to verify canvas works
+        ctx.fillStyle = '#ff0000';
+        ctx.fillRect(10, 10, 50, 50);
+
         // Apply camera transform
         this.camera.applyTransform(ctx);
+
+        // Debug: Draw a rectangle at world origin to verify camera transform
+        ctx.fillStyle = '#00ff00';
+        ctx.fillRect(0, 0, 100, 100);
+
+        // Debug: Draw a rectangle at player position
+        if (this.player) {
+            ctx.fillStyle = '#0000ff';
+            ctx.fillRect(this.player.x - 25, this.player.y - 25, 50, 50);
+        }
 
         // Draw tile map
         this.tileMap.draw(ctx, this.camera, this.gameTime);
@@ -582,6 +596,15 @@ export class GameScene extends Scene {
 
         // Draw HUD
         this.hud.draw(ctx);
+
+        // Debug info overlay
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px monospace';
+        ctx.textAlign = 'left';
+        ctx.fillText(`Player: ${Math.round(this.player?.x || 0)}, ${Math.round(this.player?.y || 0)}`, 10, 100);
+        ctx.fillText(`Camera: ${Math.round(this.camera?.position?.x || 0)}, ${Math.round(this.camera?.position?.y || 0)}`, 10, 118);
+        ctx.fillText(`TileMap: ${this.tileMap?.width || 0}x${this.tileMap?.height || 0} tiles`, 10, 136);
+        ctx.fillText(`Sprites loaded: ${this.tileMap?.spriteSheets?.size || 0}`, 10, 154);
 
         // Draw level up screen if showing
         if (this.showingLevelUp) {
