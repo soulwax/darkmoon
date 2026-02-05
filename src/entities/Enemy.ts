@@ -31,9 +31,9 @@ export interface EnemyTypeDefinition {
 export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     skeleton: {
         name: 'Skeleton',
-        health: 35,
-        damage: 12,
-        speed: 45,
+        health: 30,
+        damage: 10,
+        speed: 40,
         xpValue: 8,
         color: '#d4c4a8',
         size: 14,
@@ -47,9 +47,9 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     },
     slime: {
         name: 'Slime',
-        health: 25,
-        damage: 8,
-        speed: 35,
+        health: 22,
+        damage: 6,
+        speed: 30,
         xpValue: 5,
         color: '#44ff44',
         size: 10,
@@ -63,9 +63,9 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     },
     basic: {
         name: 'Basic',
-        health: 30,
-        damage: 10,
-        speed: 50,
+        health: 26,
+        damage: 8,
+        speed: 45,
         xpValue: 5,
         color: '#f44',
         size: 12,
@@ -73,9 +73,9 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     },
     fast: {
         name: 'Fast',
-        health: 20,
-        damage: 8,
-        speed: 100,
+        health: 18,
+        damage: 6,
+        speed: 85,
         xpValue: 8,
         color: '#4f4',
         size: 10,
@@ -83,9 +83,9 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     },
     tank: {
         name: 'Tank',
-        health: 80,
-        damage: 15,
-        speed: 30,
+        health: 70,
+        damage: 12,
+        speed: 28,
         xpValue: 15,
         color: '#44f',
         size: 18,
@@ -93,9 +93,9 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
     },
     elite: {
         name: 'Elite',
-        health: 100,
-        damage: 20,
-        speed: 60,
+        health: 90,
+        damage: 16,
+        speed: 55,
         xpValue: 25,
         color: '#f4f',
         size: 16,
@@ -184,6 +184,8 @@ export class Enemy extends Entity {
     _setupComponents(typeDef: EnemyTypeDefinition, config: GameConfig) {
         // Health
         const health = new HealthComponent(typeDef.health);
+        // Enemies shouldn't have long i-frames like the player.
+        health.invulnerabilityDuration = 0.05;
         health.onDeath = () => this._onDeath();
         health.onDamage = (amount) => this._onDamage(amount);
         this.addComponent(health);

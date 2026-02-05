@@ -54,12 +54,12 @@ export class AnimatorComponent extends Component {
         }
         this.state = state;
 
-        // Build animation name: e.g., "down_idle", "left_running"
-        const animName = this._getAnimationName();
+        const resolved = this._resolveAnimation();
+        this.animator.flipX = resolved.flipX;
 
-        if (this.animator.hasAnimation(animName)) {
+        if (resolved.name && this.animator.hasAnimation(resolved.name)) {
             const loop = state !== 'attack';
-            this.play(animName, loop);
+            this.play(resolved.name, loop);
         }
     }
 
@@ -82,18 +82,49 @@ export class AnimatorComponent extends Component {
     /**
      * Get animation name from state and direction
      */
-    _getAnimationName() {
-        // Handle right direction (flip left animations)
-        let dir = this.direction;
+    _resolveAnimation() {
+        const dir = this.direction;
         let state = this.state;
 
-        // Map states to animation names
         if (state === 'run' || state === 'walk') {
             state = 'running';
         }
 
-        // Try direction_state format (e.g., "down_idle", "left_running")
-        return `${dir}_${state}`;
+        const candidates: Array<{ name: string; flipX: boolean }> = [];
+        const add = (name: string, flipX: boolean) => {
+            if (!name) return;
+            if (candidates.some((c) => c.name === name && c.flipX === flipX)) return;
+            candidates.push({ name, flipX });
+        };
+
+        // Player sheet uses "attack_left" style for attacks, so try that first.
+        if (state === 'attack') {
+            add(`attack_${dir}`, false);
+        }
+
+        // Default convention: "left_running", "down_idle", etc.
+        add(`${dir}_${state}`, false);
+
+        // Mirror fallbacks: if only one horizontal direction exists, flip it.
+        if (dir === 'right') {
+            add(`left_${state}`, true);
+            if (state === 'attack') add(`attack_left`, true);
+        } else if (dir === 'left') {
+            add(`right_${state}`, true);
+            if (state === 'attack') add(`attack_right`, true);
+        }
+
+        // Directionless/fallback options.
+        add(`down_${state}`, false);
+        if (state === 'attack') add('attack_down', false);
+
+        for (const candidate of candidates) {
+            if (this.animator.hasAnimation(candidate.name)) {
+                return candidate;
+            }
+        }
+
+        return { name: candidates[0]?.name || '', flipX: false };
     }
 
     /**
@@ -108,19 +139,6 @@ export class AnimatorComponent extends Component {
 
     update(deltaTime: number) {
         this.animator.update(deltaTime);
-
-        // Handle flip for right direction (if using left sprites)
-        if (this.direction === 'right') {
-            // Check if we have right_* animations, if not flip left_*
-            const rightAnim = `right_${this.state === 'run' ? 'running' : this.state}`;
-            if (!this.animator.hasAnimation(rightAnim)) {
-                this.animator.flipX = true;
-            } else {
-                this.animator.flipX = false;
-            }
-        } else {
-            this.animator.flipX = false;
-        }
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
@@ -151,6 +169,13 @@ export class AnimatorComponent extends Component {
      */
     setFlipX(flip: boolean) {
         this.animator.flipX = flip;
+    }
+
+    /**
+     * Set flip Y
+     */
+    setFlipY(flip: boolean) {
+        this.animator.flipY = flip;
     }
 
     /**

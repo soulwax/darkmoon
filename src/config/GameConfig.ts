@@ -33,18 +33,18 @@ export const DefaultConfig = {
         startY: 800,
         width: 48,
         height: 48,
-        speed: 120.0,
+        speed: 150.0,
         jumpForce: 300.0,
-        maxHealth: 100,
+        maxHealth: 150,
         maxStamina: 100,
         staminaRegenRate: 10.0,
         canDoubleJump: false,
         dashEnabled: true,
         dashSpeed: 300.0,
         dashDuration: 0.2,
-        dashCooldown: 1.0,
+        dashCooldown: 0.8,
         pickupRange: 50,
-        invulnerabilityDuration: 0.5
+        invulnerabilityDuration: 0.75
     },
 
     camera: {

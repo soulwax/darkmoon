@@ -25,6 +25,19 @@ export interface PlayerStats {
 
 type WeaponClass<T extends Weapon = Weapon> = new (owner: Player, options?: Record<string, unknown>) => T;
 
+export interface PlayerEffect {
+    id: string;
+    name: string;
+    icon: string;
+    duration: number;
+    remaining: number;
+    multipliers: {
+        moveSpeed?: number;
+        damage?: number;
+        pickupRange?: number;
+    };
+}
+
 export class Player extends Entity {
     config: GameConfig;
     xp: number;
@@ -33,7 +46,9 @@ export class Player extends Entity {
     xpScaling: number;
     stats: PlayerStats;
     weapons: Weapon[];
-    pickupRange: number;
+    baseMoveSpeed: number;
+    basePickupRange: number;
+    effects: PlayerEffect[];
 
     constructor(x: number, y: number, config: GameConfig, spriteSheet: SpriteSheet | null) {
         super(x, y);
@@ -62,8 +77,12 @@ export class Player extends Entity {
         // Weapons
         this.weapons = [];
 
-        // Pickup range
-        this.pickupRange = config.player?.pickupRange || 50;
+        // Base stats used for derived values
+        this.baseMoveSpeed = config.player?.speed || 120;
+        this.basePickupRange = config.player?.pickupRange || 50;
+
+        // Active timed effects (powerups, etc.)
+        this.effects = [];
 
         // Setup components
         this._setupComponents(config, spriteSheet);
@@ -71,7 +90,10 @@ export class Player extends Entity {
         // Handle death
         const health = this.getComponent<HealthComponent>('HealthComponent');
         if (health) {
-            health.onDeath = () => this._onDeath();
+            health.onDeath = () => {
+                const movement = this.getComponent<MovementComponent>('MovementComponent');
+                movement?.stop();
+            };
         }
     }
 
@@ -92,7 +114,7 @@ export class Player extends Entity {
 
         // Movement component
         const movement = new MovementComponent({
-            speed: playerConfig.speed || 120,
+            speed: this.baseMoveSpeed,
             maxSpeed: config.physics?.maxVelocityX || 500,
             dashEnabled: playerConfig.dashEnabled !== false,
             dashSpeed: playerConfig.dashSpeed || 300,
@@ -240,10 +262,7 @@ export class Player extends Entity {
         // Apply stat effects
         switch (stat) {
             case 'moveSpeed':
-                const movement = this.getComponent<MovementComponent>('MovementComponent');
-                if (movement) {
-                    movement.speed = (this.config.player?.speed || 120) * this.stats.moveSpeed;
-                }
+                this._syncMovementSpeed();
                 break;
 
             case 'maxHealth':
@@ -256,7 +275,6 @@ export class Player extends Entity {
                 break;
 
             case 'pickupRange':
-                this.pickupRange = (this.config.player?.pickupRange || 50) * this.stats.pickupRange;
                 break;
 
             case 'damageMultiplier':
@@ -271,22 +289,104 @@ export class Player extends Entity {
         }
     }
 
+    _getEffectMultipliers() {
+        let moveSpeed = 1;
+        let damage = 1;
+        let pickupRange = 1;
+
+        for (const effect of this.effects) {
+            if (effect.multipliers.moveSpeed) moveSpeed *= effect.multipliers.moveSpeed;
+            if (effect.multipliers.damage) damage *= effect.multipliers.damage;
+            if (effect.multipliers.pickupRange) pickupRange *= effect.multipliers.pickupRange;
+        }
+
+        return { moveSpeed, damage, pickupRange };
+    }
+
+    _syncMovementSpeed() {
+        const movement = this.getComponent<MovementComponent>('MovementComponent');
+        if (!movement) return;
+
+        const mult = this._getEffectMultipliers();
+        movement.speed = this.baseMoveSpeed * this.stats.moveSpeed * mult.moveSpeed;
+    }
+
+    getDamageMultiplier() {
+        const mult = this._getEffectMultipliers();
+        return this.stats.damageMultiplier * mult.damage;
+    }
+
     /**
      * Get effective pickup range
      */
     getPickupRange() {
-        return this.pickupRange * this.stats.pickupRange;
+        const mult = this._getEffectMultipliers();
+        return this.basePickupRange * this.stats.pickupRange * mult.pickupRange;
     }
 
-    /**
-     * Handle death
-     */
-    _onDeath() {
-        eventBus.emit(GameEvents.GAME_OVER, {
-            player: this,
-            level: this.level,
-            xp: this.xp
-        });
+    getActiveEffects() {
+        return this.effects.map((e) => ({ ...e }));
+    }
+
+    addEffect(effect: Omit<PlayerEffect, 'remaining'>) {
+        const existingIndex = this.effects.findIndex((e) => e.id === effect.id);
+        const normalized: PlayerEffect = { ...effect, remaining: effect.duration };
+
+        if (existingIndex !== -1) {
+            this.effects[existingIndex] = normalized;
+        } else {
+            this.effects.push(normalized);
+        }
+
+        this._syncMovementSpeed();
+    }
+
+    applyPowerUp(type: 'heal' | 'shield' | 'haste' | 'rage' | 'magnet' | 'xp') {
+        switch (type) {
+            case 'heal': {
+                const health = this.getComponent<HealthComponent>('HealthComponent');
+                health?.heal(Math.max(20, Math.floor((health.maxHealth || 100) * 0.25)));
+                break;
+            }
+            case 'shield': {
+                const health = this.getComponent<HealthComponent>('HealthComponent');
+                if (health) {
+                    health.invulnerable = true;
+                    health.invulnerabilityTimer = Math.max(health.invulnerabilityTimer, 4);
+                }
+                break;
+            }
+            case 'haste':
+                this.addEffect({
+                    id: 'haste',
+                    name: 'Haste',
+                    icon: '💨',
+                    duration: 8,
+                    multipliers: { moveSpeed: 1.5 }
+                });
+                break;
+            case 'rage':
+                this.addEffect({
+                    id: 'rage',
+                    name: 'Rage',
+                    icon: '💥',
+                    duration: 8,
+                    multipliers: { damage: 1.5 }
+                });
+                break;
+            case 'magnet':
+                this.addEffect({
+                    id: 'magnet',
+                    name: 'Magnet',
+                    icon: '🧲',
+                    duration: 10,
+                    multipliers: { pickupRange: 1.75 }
+                });
+                break;
+            case 'xp':
+                this.gainXP(25);
+                break;
+        }
     }
 
     /**
@@ -307,6 +407,7 @@ export class Player extends Entity {
         };
 
         this.weapons = [];
+        this.effects = [];
 
         // Reset health
         const health = this.getComponent<HealthComponent>('HealthComponent');
@@ -318,12 +419,25 @@ export class Player extends Entity {
         const movement = this.getComponent<MovementComponent>('MovementComponent');
         if (movement) {
             movement.stop();
-            movement.speed = this.config.player?.speed || 120;
+            this.baseMoveSpeed = this.config.player?.speed || 120;
+            this.basePickupRange = this.config.player?.pickupRange || 50;
+            movement.speed = this.baseMoveSpeed;
         }
     }
 
     update(deltaTime: number) {
         super.update(deltaTime);
+
+        // Update timed effects
+        if (this.effects.length > 0) {
+            for (let i = this.effects.length - 1; i >= 0; i--) {
+                this.effects[i].remaining -= deltaTime;
+                if (this.effects[i].remaining <= 0) {
+                    this.effects.splice(i, 1);
+                }
+            }
+            this._syncMovementSpeed();
+        }
 
         // Update weapons
         for (const weapon of this.weapons) {

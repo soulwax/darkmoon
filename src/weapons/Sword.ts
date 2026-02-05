@@ -37,20 +37,20 @@ export class Sword extends Weapon {
         this.baseKnockback = 300;
         this.baseCooldown = 0.8;
         this.baseRange = 60;
-        this.baseArc = Math.PI * 0.6; // 108 degree arc
+        this.baseArc = Math.PI * 0.75; // 135 degree arc for wider slash
 
         // Current swing state
         this.swinging = false;
         this.swingAngle = 0;
         this.swingProgress = 0;
-        this.swingDuration = 0.2;
+        this.swingDuration = 0.15; // Faster swing
         this.swingDirection = 1;
 
         // Visual properties
-        this.bladeLength = 40;
-        this.bladeWidth = 8;
+        this.bladeLength = 28;
+        this.bladeWidth = 6;
         this.trailPositions = [];
-        this.maxTrailLength = 8;
+        this.maxTrailLength = 12;
 
         // Enemies hit this swing (prevent double-hit)
         this.hitThisSwing = new Set();
@@ -246,7 +246,8 @@ export class Sword extends Weapon {
         this.hitThisSwing.add(enemy);
 
         // Apply damage
-        const damage = Math.floor(this.damage * (this.owner.stats?.damageMultiplier || 1));
+        const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
+        const damage = Math.floor(this.damage * mult);
         enemy.takeDamage(damage, this.owner);
 
         // Apply knockback
@@ -259,80 +260,61 @@ export class Sword extends Weapon {
         if (!this.swinging && this.trailPositions.length === 0) return;
 
         const { x, y } = this.owner;
+        const slashRadius = this.range * 0.8;
 
         ctx.save();
         ctx.translate(x, y);
 
-        // Draw trail
-        for (const trail of this.trailPositions) {
-            ctx.save();
-            ctx.rotate(trail.angle);
-            ctx.globalAlpha = trail.alpha;
+        // Draw arc slash trail
+        if (this.trailPositions.length >= 2) {
+            const startAngle = this.trailPositions[0].angle;
+            const endAngle = this.trailPositions[this.trailPositions.length - 1].angle;
 
-            // Trail blade
-            ctx.fillStyle = '#aaccff';
+            // Outer glow
             ctx.beginPath();
-            ctx.moveTo(15, -2);
-            ctx.lineTo(15 + this.bladeLength, -this.bladeWidth / 2);
-            ctx.lineTo(15 + this.bladeLength + 8, 0);
-            ctx.lineTo(15 + this.bladeLength, this.bladeWidth / 2);
-            ctx.lineTo(15, 2);
-            ctx.closePath();
-            ctx.fill();
+            ctx.arc(0, 0, slashRadius + 8, startAngle, endAngle, this.swingDirection < 0);
+            ctx.strokeStyle = 'rgba(150, 200, 255, 0.2)';
+            ctx.lineWidth = 16;
+            ctx.lineCap = 'round';
+            ctx.stroke();
 
-            ctx.restore();
+            // Main slash arc
+            ctx.beginPath();
+            ctx.arc(0, 0, slashRadius, startAngle, endAngle, this.swingDirection < 0);
+            const gradient = ctx.createRadialGradient(0, 0, slashRadius - 10, 0, 0, slashRadius + 10);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.8)');
+            gradient.addColorStop(1, 'rgba(150, 180, 255, 0.3)');
+            ctx.strokeStyle = gradient;
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.stroke();
+
+            // Inner bright edge
+            ctx.beginPath();
+            ctx.arc(0, 0, slashRadius - 2, startAngle, endAngle, this.swingDirection < 0);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
         }
 
-        // Draw current blade
+        // Draw blade tip at current position
         if (this.swinging) {
             const currentAngle = this._getCurrentSwingAngle();
+            const tipX = Math.cos(currentAngle) * slashRadius;
+            const tipY = Math.sin(currentAngle) * slashRadius;
 
-            ctx.rotate(currentAngle);
-            ctx.globalAlpha = 1;
-
-            // Handle
-            ctx.fillStyle = '#8B4513';
-            ctx.fillRect(5, -3, 12, 6);
-
-            // Guard
-            ctx.fillStyle = '#DAA520';
-            ctx.fillRect(15, -6, 4, 12);
-
-            // Blade
-            const gradient = ctx.createLinearGradient(19, 0, 19 + this.bladeLength, 0);
-            gradient.addColorStop(0, '#e0e0e0');
-            gradient.addColorStop(0.5, '#ffffff');
-            gradient.addColorStop(1, '#c0c0c0');
-
-            ctx.fillStyle = gradient;
+            // Blade tip glow
             ctx.beginPath();
-            ctx.moveTo(19, -this.bladeWidth / 2);
-            ctx.lineTo(19 + this.bladeLength - 5, -this.bladeWidth / 2);
-            ctx.lineTo(19 + this.bladeLength + 5, 0);
-            ctx.lineTo(19 + this.bladeLength - 5, this.bladeWidth / 2);
-            ctx.lineTo(19, this.bladeWidth / 2);
-            ctx.closePath();
+            ctx.arc(tipX, tipY, 6, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.fill();
 
-            // Blade edge highlight
-            ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1;
+            // Blade tip core
             ctx.beginPath();
-            ctx.moveTo(19, -this.bladeWidth / 2 + 1);
-            ctx.lineTo(19 + this.bladeLength - 5, -this.bladeWidth / 2 + 1);
-            ctx.stroke();
-
-            // Blade outline
-            ctx.strokeStyle = '#666';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(19, -this.bladeWidth / 2);
-            ctx.lineTo(19 + this.bladeLength - 5, -this.bladeWidth / 2);
-            ctx.lineTo(19 + this.bladeLength + 5, 0);
-            ctx.lineTo(19 + this.bladeLength - 5, this.bladeWidth / 2);
-            ctx.lineTo(19, this.bladeWidth / 2);
-            ctx.closePath();
-            ctx.stroke();
+            ctx.arc(tipX, tipY, 3, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fill();
         }
 
         ctx.restore();

@@ -202,7 +202,8 @@ export class LightningStrike extends Weapon {
 
         // Create strikes
         for (const target of targets) {
-            const finalDamage = Math.floor(this.damage * (this.owner.stats?.damageMultiplier || 1));
+            const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
+            const finalDamage = Math.floor(this.damage * mult);
 
             const strike = new LightningBolt(
                 target.x,

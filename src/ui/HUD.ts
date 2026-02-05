@@ -1,7 +1,7 @@
 // File: src/ui/HUD.js
 // Heads-up display for game stats
 
-import type { Player } from '../entities/Player';
+import type { Player, PlayerEffect } from '../entities/Player';
 import type { GameConfig } from '../config/GameConfig';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
 
@@ -21,6 +21,8 @@ export class HUD {
     levelText: HTMLElement | null;
     timeValue: HTMLElement | null;
     killValue: HTMLElement | null;
+    buffs: HTMLElement | null;
+    effects: PlayerEffect[];
 
     constructor(canvas: HTMLCanvasElement, config: GameConfig) {
         this.canvas = canvas;
@@ -34,6 +36,7 @@ export class HUD {
         this.level = 1;
         this.gameTime = 0;
         this.killCount = 0;
+        this.effects = [];
 
         // DOM elements
         this.healthBar = document.getElementById('health-bar');
@@ -42,6 +45,7 @@ export class HUD {
         this.levelText = document.getElementById('level-text');
         this.timeValue = document.getElementById('time-value');
         this.killValue = document.getElementById('kill-value');
+        this.buffs = document.getElementById('buffs');
 
         // Show HUD
         const hud = document.getElementById('hud');
@@ -68,6 +72,8 @@ export class HUD {
         this.level = player.level;
         this.gameTime = gameTime;
         this.killCount = killCount;
+
+        this.effects = typeof player.getActiveEffects === 'function' ? player.getActiveEffects() : [];
 
         this._updateDOM();
     }
@@ -112,6 +118,21 @@ export class HUD {
         // Kills
         if (this.killValue) {
             this.killValue.textContent = this.killCount.toString();
+        }
+
+        // Active powerups/effects
+        if (this.buffs) {
+            if (this.effects.length === 0) {
+                this.buffs.innerHTML = '';
+            } else {
+                this.buffs.innerHTML = this.effects
+                    .slice(0, 6)
+                    .map((effect) => {
+                        const seconds = Math.max(0, Math.ceil(effect.remaining));
+                        return `<span class="buff" title="${effect.name}">${effect.icon}<span class="buff-time">${seconds}s</span></span>`;
+                    })
+                    .join('');
+            }
         }
     }
 

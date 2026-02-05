@@ -51,6 +51,32 @@ body {
     max-width: 300px;
 }
 
+#buffs {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    pointer-events: none;
+}
+
+.buff {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.65);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.buff-time {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: normal;
+}
+
 .stat-bar {
     display: flex;
     align-items: center;
@@ -120,6 +146,31 @@ body {
 #kill-counter {
     right: 20px;
     top: 70px;
+}
+
+/* HUD Buttons */
+#hudButtons {
+    position: absolute;
+    right: 20px;
+    top: 120px;
+    z-index: 20;
+    pointer-events: all;
+}
+
+#hudRestartButton {
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    padding: 8px 14px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: bold;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+#hudRestartButton:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
 }
 
 /* Level Up Screen */

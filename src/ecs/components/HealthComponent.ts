@@ -44,6 +44,10 @@ export class HealthComponent extends Component {
         this.onDeath = null;
     }
 
+    _isPlayer() {
+        return !!this.entity && this.entity.hasTag('player');
+    }
+
     /**
      * Take damage
      * @param {number} amount - Damage amount
@@ -65,13 +69,15 @@ export class HealthComponent extends Component {
         this.damageFlash = true;
         this.damageFlashTimer = this.damageFlashDuration;
 
-        // Emit event
-        eventBus.emit(GameEvents.PLAYER_DAMAGED, {
-            entity: this.entity,
-            amount: amount,
-            remaining: this.health,
-            source: source
-        });
+        // Emit event (player-only)
+        if (this._isPlayer()) {
+            eventBus.emit(GameEvents.PLAYER_DAMAGED, {
+                entity: this.entity,
+                amount: amount,
+                remaining: this.health,
+                source: source
+            });
+        }
 
         // Callback
         if (this.onDamage) {
@@ -99,11 +105,13 @@ export class HealthComponent extends Component {
         const healed = this.health - oldHealth;
 
         if (healed > 0) {
-            eventBus.emit(GameEvents.PLAYER_HEALED, {
-                entity: this.entity,
-                amount: healed,
-                current: this.health
-            });
+            if (this._isPlayer()) {
+                eventBus.emit(GameEvents.PLAYER_HEALED, {
+                    entity: this.entity,
+                    amount: healed,
+                    current: this.health
+                });
+            }
 
             if (this.onHeal) {
                 this.onHeal(healed);
@@ -136,9 +144,11 @@ export class HealthComponent extends Component {
         this.isDead = true;
         this.health = 0;
 
-        eventBus.emit(GameEvents.PLAYER_DIED, {
-            entity: this.entity
-        });
+        if (this._isPlayer()) {
+            eventBus.emit(GameEvents.PLAYER_DIED, {
+                entity: this.entity
+            });
+        }
 
         if (this.onDeath) {
             this.onDeath();

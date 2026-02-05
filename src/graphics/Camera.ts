@@ -275,10 +275,15 @@ export class Camera {
     applyTransform(ctx: CanvasRenderingContext2D) {
         ctx.save();
         ctx.scale(this.zoom, this.zoom);
-        ctx.translate(
-            -this.position.x - this.shakeOffset.x,
-            -this.position.y - this.shakeOffset.y
-        );
+        const tx = -this.position.x - this.shakeOffset.x;
+        const ty = -this.position.y - this.shakeOffset.y;
+
+        // Pixel-snap camera translation in screen space to avoid subpixel seams between tiles/sprites.
+        // Convert to screen pixels, round, then convert back to world units.
+        const snappedTx = Math.round(tx * this.zoom) / this.zoom;
+        const snappedTy = Math.round(ty * this.zoom) / this.zoom;
+
+        ctx.translate(snappedTx, snappedTy);
     }
 
     /**

@@ -8,28 +8,17 @@ import { TileMap } from '../graphics/TileMap';
 import { InputManager } from '../input/InputManager';
 import { SpawnSystem } from '../systems/SpawnSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
-import { MagicOrbs } from '../weapons/MagicOrbs';
-import { MagicMissiles } from '../weapons/MagicMissiles';
-import { LightningStrike } from '../weapons/LightningStrike';
 import { Sword } from '../weapons/Sword';
 import { Longsword } from '../weapons/Longsword';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { HUD } from '../ui/HUD';
 import { LevelUpScreen } from '../ui/LevelUpScreen';
+import { UpgradeSystem, type UpgradeOption } from '../systems/UpgradeSystem';
 import type { Game } from '../Game';
 import type { GameConfig } from '../config/GameConfig';
 import type { AssetLoader } from '../assets/AssetLoader';
 import type { SpriteSheet } from '../assets/SpriteSheet';
-import type { Weapon } from '../weapons/Weapon';
-import type { PlayerStats } from '../entities/Player';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
-
-type WeaponClass = new (owner: Player, options?: Record<string, unknown>) => Weapon;
-
-type UpgradeOption =
-    | { type: 'weapon'; weaponClass: WeaponClass; name: string; description: string; icon: string }
-    | { type: 'upgrade'; weapon: Weapon; name: string; description: string; icon: string }
-    | { type: 'stat'; stat: keyof PlayerStats; value: number; name: string; description: string; icon: string };
 
 export class GameScene extends Scene {
     config: GameConfig;
@@ -42,6 +31,7 @@ export class GameScene extends Scene {
     player!: Player;
     hud!: HUD;
     levelUpScreen!: LevelUpScreen;
+    upgradeSystem!: UpgradeSystem;
     showingLevelUp: boolean;
     gameTime: number;
     killCount: number;
@@ -93,6 +83,30 @@ export class GameScene extends Scene {
 
         eventBus.on(GameEvents.PLAYER_DAMAGED, () => {
             this.camera?.shake(3, 0.2);
+        });
+
+        eventBus.on(GameEvents.POWERUP_COLLECTED, (data: { type: string; x: number; y: number }) => {
+            if (!this.player) return;
+
+            if (data.type === 'bomb') {
+                const enemies = this.spawnSystem?.getEnemies?.() || [];
+                const base = 40 + (this.player.level - 1) * 4;
+                const mult = typeof this.player.getDamageMultiplier === 'function' ? this.player.getDamageMultiplier() : 1;
+                const bombDamage = Math.floor(base * mult);
+
+                for (const enemy of enemies) {
+                    if (enemy.destroyed) continue;
+                    enemy.takeDamage(bombDamage, this.player);
+                }
+
+                this.camera?.shake(6, 0.25);
+                this.particleSystem?.createLightningEffect(data.x, data.y, 120);
+                return;
+            }
+
+            if (data.type === 'heal' || data.type === 'shield' || data.type === 'haste' || data.type === 'rage' || data.type === 'magnet' || data.type === 'xp') {
+                this.player.applyPowerUp(data.type);
+            }
         });
 
         eventBus.on(GameEvents.PLAYER_DIED, () => {
@@ -159,6 +173,7 @@ export class GameScene extends Scene {
         // Setup UI
         this.hud = new HUD(this.game.canvas, this.config);
         this.levelUpScreen = new LevelUpScreen(this.game.canvas, this.config);
+        this.upgradeSystem = new UpgradeSystem(this.player);
 
         // Reset state
         this.gameTime = 0;
@@ -172,10 +187,6 @@ export class GameScene extends Scene {
         // Cleanup
         this.spawnSystem?.clear();
         this.particleSystem?.clear();
-
-        if (this.inputManager) {
-            this.inputManager.destroy();
-        }
     }
 
     _generateWorld() {
@@ -423,95 +434,27 @@ export class GameScene extends Scene {
         this.showingLevelUp = true;
         this.game.pause();
 
-        // Generate upgrade options
-        const options = this._generateUpgradeOptions();
+        const options = this.upgradeSystem.generateOptions(3);
         this.levelUpScreen.show(options, (selected) => {
-            this._applyUpgrade(selected);
+            this.upgradeSystem.applyUpgrade(selected as UpgradeOption);
             this.showingLevelUp = false;
             this.game.resume();
         });
     }
 
-    _generateUpgradeOptions() {
-        const options: UpgradeOption[] = [];
-        const weapons: Array<{ class: WeaponClass; name: string; desc: string; icon: string }> = [
-            { class: Sword, name: 'Sword', desc: 'Melee swing with knockback', icon: '🗡️' },
-            { class: MagicOrbs, name: 'Magic Orbs', desc: 'Rotating orbs damage nearby enemies', icon: '🔮' },
-            { class: MagicMissiles, name: 'Magic Missiles', desc: 'Auto-targeting projectiles', icon: '✨' },
-            { class: LightningStrike, name: 'Lightning Strike', desc: 'Area lightning attacks', icon: '⚡' }
-        ];
-
-        // Add new weapons player doesn't have
-        for (const weapon of weapons) {
-            if (!this.player.hasWeapon(weapon.class)) {
-                options.push({
-                    type: 'weapon',
-                    weaponClass: weapon.class,
-                    name: `New: ${weapon.name}`,
-                    description: weapon.desc,
-                    icon: weapon.icon || '⚔️'
-                });
-            }
-        }
-
-        // Add weapon upgrades
-        for (const weapon of this.player.weapons) {
-            if (weapon.level < weapon.maxLevel) {
-                options.push({
-                    type: 'upgrade',
-                    weapon: weapon,
-                    name: `Upgrade ${weapon.name}`,
-                    description: `Level ${weapon.level} → ${weapon.level + 1}`,
-                    icon: '⬆️'
-                });
-            }
-        }
-
-        // Add stat upgrades
-        const stats: Array<{ stat: keyof PlayerStats; name: string; desc: string; value: number; icon: string }> = [
-            { stat: 'moveSpeed', name: 'Speed Boost', desc: '+15% movement speed', value: 0.15, icon: '🏃' },
-            { stat: 'maxHealth', name: 'Max Health', desc: '+20% max health', value: 0.20, icon: '❤️' },
-            { stat: 'pickupRange', name: 'Magnet', desc: '+25% pickup range', value: 0.25, icon: '🧲' },
-            { stat: 'damageMultiplier', name: 'Power', desc: '+10% damage', value: 0.10, icon: '💪' }
-        ];
-
-        for (const stat of stats) {
-            options.push({
-                type: 'stat',
-                stat: stat.stat,
-                value: stat.value,
-                name: stat.name,
-                description: stat.desc,
-                icon: stat.icon
-            });
-        }
-
-        // Shuffle and pick 3
-        const shuffled = options.sort(() => Math.random() - 0.5);
-        return shuffled.slice(0, 3);
-    }
-
-    _applyUpgrade(option: UpgradeOption) {
-        switch (option.type) {
-            case 'weapon':
-                this.player.addWeapon(option.weaponClass);
-                break;
-            case 'upgrade':
-                option.weapon.upgrade();
-                break;
-            case 'stat':
-                this.player.applyStat(option.stat, option.value);
-                break;
-        }
-    }
-
     update(deltaTime: number) {
+        // Update input (even if a level-up overlay is showing)
+        this.inputManager.update();
+
+        // Restart hotkey
+        if (this.inputManager.isActionPressed('restart')) {
+            eventBus.emit(GameEvents.GAME_RESTART);
+            return;
+        }
+
         if (this.showingLevelUp) return;
 
         this.gameTime += deltaTime;
-
-        // Update input
-        this.inputManager.update();
 
         // Handle pause
         if (this.inputManager.isActionPressed('pause')) {
@@ -612,4 +555,3 @@ export class GameScene extends Scene {
         }
     }
 }
-

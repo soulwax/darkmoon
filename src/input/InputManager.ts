@@ -90,7 +90,8 @@ export class InputManager {
             attack: 'KeyJ',
             special: 'KeyK',
             pause: 'Escape',
-            inventory: 'KeyI'
+            inventory: 'KeyI',
+            restart: 'KeyR'
         };
 
         // Merge with config

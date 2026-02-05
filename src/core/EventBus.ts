@@ -133,6 +133,7 @@ export const GameEvents = {
     // Item events
     XP_COLLECTED: 'xp:collected',
     ITEM_COLLECTED: 'item:collected',
+    POWERUP_COLLECTED: 'powerup:collected',
 
     // Game state events
     GAME_START: 'game:start',

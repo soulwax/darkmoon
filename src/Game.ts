@@ -41,6 +41,8 @@ export class Game {
             throw new Error('Unable to acquire 2D rendering context');
         }
         this.ctx = ctx;
+        // Pixel art rendering: prevent interpolation artifacts (tile seams, blurry sprites)
+        this.ctx.imageSmoothingEnabled = false;
         this.config = config;
         this.eventBus = eventBus;
 
@@ -120,7 +122,14 @@ export class Game {
         this.gameOver = false;
         this.killCount = 0;
         this.gameLoop.resetGameTime();
-        this.gameLoop.start();
+
+        // If the loop is already running (e.g. after a game over), resume it.
+        // Otherwise start it fresh.
+        if (this.gameLoop.isRunning()) {
+            this.gameLoop.resume();
+        } else {
+            this.gameLoop.start();
+        }
 
         console.log('Game started');
     }
@@ -154,6 +163,7 @@ export class Game {
         this.killCount = 0;
         this.gameOver = false;
         this.paused = false;
+        this.running = true;
         this.gameLoop.resetGameTime();
 
         // Reset current scene
@@ -161,7 +171,11 @@ export class Game {
             this.sceneManager.restart();
         }
 
-        this.resume();
+        if (this.gameLoop.isRunning()) {
+            this.gameLoop.resume();
+        } else {
+            this.gameLoop.start();
+        }
         console.log('Game restarted');
     }
 
@@ -199,6 +213,8 @@ export class Game {
      * @param {number} alpha - Interpolation alpha for smooth rendering
      */
     draw(alpha: number) {
+        // Ensure smoothing stays off even if other code toggles it.
+        this.ctx.imageSmoothingEnabled = false;
         // Clear canvas
         this.ctx.fillStyle = '#1a1a2e';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);

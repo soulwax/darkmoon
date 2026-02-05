@@ -103,7 +103,8 @@ export class MagicOrbs extends Weapon {
 
                 if (dist < this.orbRadius + enemy.size) {
                     // Hit!
-                    const finalDamage = Math.floor(this.damage * (this.owner.stats?.damageMultiplier || 1));
+                    const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
+                    const finalDamage = Math.floor(this.damage * mult);
                     enemy.takeDamage(finalDamage, this.owner);
                     this.hitEnemies.add(enemy.id);
                 }

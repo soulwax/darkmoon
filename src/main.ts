@@ -109,7 +109,16 @@ class Application {
         if (restartButton) {
             restartButton.addEventListener('click', () => {
                 this.hideGameOver();
-                this.startGame();
+                eventBus.emit(GameEvents.GAME_RESTART);
+            });
+        }
+
+        // In-game restart button
+        const hudRestartButton = document.getElementById('hudRestartButton');
+        if (hudRestartButton) {
+            hudRestartButton.addEventListener('click', () => {
+                this.hideGameOver();
+                eventBus.emit(GameEvents.GAME_RESTART);
             });
         }
 

@@ -3,8 +3,10 @@
 
 import { Enemy, EnemyTypes } from '../entities/Enemy';
 import { XPGem } from '../entities/XPGem';
+import { PowerUpPickup } from '../entities/PowerUpPickup';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { MathUtils } from '../core/Math';
+import { pickRandomPowerUpType, type PowerUpType } from '../powerups/PowerUps';
 import type { Camera } from '../graphics/Camera';
 import type { AssetLoader } from '../assets/AssetLoader';
 import type { GameConfig } from '../config/GameConfig';
@@ -26,6 +28,7 @@ export class SpawnSystem {
     waveTimer: number;
     enemies: Enemy[];
     xpGems: XPGem[];
+    powerUps: PowerUpPickup[];
     target: Player | null;
     worldWidth: number;
     worldHeight: number;
@@ -52,6 +55,7 @@ export class SpawnSystem {
         // Entity lists
         this.enemies = [];
         this.xpGems = [];
+        this.powerUps = [];
 
         // Target to spawn enemies around
         this.target = null;
@@ -106,6 +110,11 @@ export class SpawnSystem {
         eventBus.on(GameEvents.ENEMY_KILLED, (data: { enemy: Enemy; x: number; y: number; xpValue: number }) => {
             this.spawnXPGem(data.x, data.y, data.xpValue);
 
+            // Chance to spawn a powerup pickup (kept fairly rare)
+            if (Math.random() < 0.12) {
+                this.spawnPowerUp(data.x, data.y);
+            }
+
             // Remove from enemies array
             const index = this.enemies.indexOf(data.enemy);
             if (index !== -1) {
@@ -118,6 +127,13 @@ export class SpawnSystem {
             const index = this.xpGems.indexOf(data.gem);
             if (index !== -1) {
                 this.xpGems.splice(index, 1);
+            }
+        });
+
+        eventBus.on(GameEvents.POWERUP_COLLECTED, (data: { powerup: PowerUpPickup }) => {
+            const index = this.powerUps.indexOf(data.powerup);
+            if (index !== -1) {
+                this.powerUps.splice(index, 1);
             }
         });
     }
@@ -279,6 +295,20 @@ export class SpawnSystem {
     }
 
     /**
+     * Spawn a powerup pickup
+     */
+    spawnPowerUp(x: number, y: number, type: PowerUpType | null = null) {
+        const scatterX = MathUtils.random(-12, 12);
+        const scatterY = MathUtils.random(-12, 12);
+
+        const chosenType = type || pickRandomPowerUpType();
+        const powerup = new PowerUpPickup(x + scatterX, y + scatterY, chosenType);
+        this.powerUps.push(powerup);
+
+        return powerup;
+    }
+
+    /**
      * Update spawning
      * @param {number} deltaTime
      */
@@ -326,6 +356,16 @@ export class SpawnSystem {
                 this.xpGems.splice(i, 1);
             }
         }
+
+        // Update powerups
+        for (let i = this.powerUps.length - 1; i >= 0; i--) {
+            const powerup = this.powerUps[i];
+            powerup.update(deltaTime, player, pickupRange);
+
+            if (powerup.destroyed || powerup.collected) {
+                this.powerUps.splice(i, 1);
+            }
+        }
     }
 
     /**
@@ -334,6 +374,13 @@ export class SpawnSystem {
      * @param {Camera} camera
      */
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
+        // Draw powerups
+        for (const powerup of this.powerUps) {
+            if (camera.isVisible(powerup.x - 30, powerup.y - 30, 60, 60)) {
+                powerup.draw(ctx);
+            }
+        }
+
         // Draw XP gems
         for (const gem of this.xpGems) {
             if (camera.isVisible(gem.x - 20, gem.y - 20, 40, 40)) {
@@ -367,9 +414,13 @@ export class SpawnSystem {
         for (const gem of this.xpGems) {
             gem.destroy();
         }
+        for (const powerup of this.powerUps) {
+            powerup.destroy();
+        }
 
         this.enemies = [];
         this.xpGems = [];
+        this.powerUps = [];
         this.waveNumber = 0;
         this.waveTimer = 0;
         this.spawnTimer = 0;
