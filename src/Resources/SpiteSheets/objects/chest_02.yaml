@@ -4,6 +4,8 @@ meta:
   tile_size: 16
   frames: 0
   loop: false
+  file:
+  - chest_02.png
   files:
   - chest_02.png
 

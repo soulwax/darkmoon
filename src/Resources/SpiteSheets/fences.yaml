@@ -7,7 +7,7 @@ meta:
   loop: false
   variant: wood
   file:
-  - fence-wood.png
+  - fences.png
 
 
 tiles:

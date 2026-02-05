@@ -164,9 +164,12 @@ export class TileMap {
      * Draw visible tiles
      * @param {CanvasRenderingContext2D} ctx
      * @param {Camera} camera
+     * @param {number} [time] - World time in seconds (for animated tiles)
      */
-    draw(ctx, camera) {
+    draw(ctx, camera, time = 0) {
         const bounds = camera.getVisibleBounds();
+        const sheetFrameCache = new Map();
+        const sheetOptionsCache = new Map();
 
         // Calculate visible tile range (with margin)
         const margin = 2; // Extra tiles for smooth scrolling
@@ -176,13 +179,13 @@ export class TileMap {
         const endY = Math.min(this.height, Math.ceil((bounds.y + bounds.height) / this.tileSize) + margin);
 
         // Draw ground layer
-        this._drawLayer(ctx, 'ground', startX, startY, endX, endY);
+        this._drawLayer(ctx, 'ground', startX, startY, endX, endY, time, sheetFrameCache, sheetOptionsCache);
 
         // Draw decoration layer
-        this._drawLayer(ctx, 'decoration', startX, startY, endX, endY);
+        this._drawLayer(ctx, 'decoration', startX, startY, endX, endY, time, sheetFrameCache, sheetOptionsCache);
     }
 
-    _drawLayer(ctx, layerName, startX, startY, endX, endY) {
+    _drawLayer(ctx, layerName, startX, startY, endX, endY, time, sheetFrameCache, sheetOptionsCache) {
         const layer = this.layers[layerName];
         if (!layer) return;
 
@@ -211,10 +214,37 @@ export class TileMap {
                     const worldX = x * this.tileSize + this.tileSize / 2;
                     const worldY = y * this.tileSize + this.tileSize / 2;
 
+                    let sheetFrameIndex = 0;
+                    if (sheetFrameCache.has(tileDef.spriteSheet)) {
+                        sheetFrameIndex = sheetFrameCache.get(tileDef.spriteSheet);
+                    } else if (typeof spriteSheet.getSheetFrameIndex === 'function') {
+                        sheetFrameIndex = spriteSheet.getSheetFrameIndex(time);
+                        sheetFrameCache.set(tileDef.spriteSheet, sheetFrameIndex);
+                    }
+
+                    const baseOptions = tileDef.drawOptions || null;
+                    let drawOptions = baseOptions;
+
+                    if (sheetFrameIndex !== 0) {
+                        if (baseOptions) {
+                            drawOptions = { ...baseOptions, sheetFrameIndex };
+                        } else if (sheetOptionsCache.has(tileDef.spriteSheet)) {
+                            drawOptions = sheetOptionsCache.get(tileDef.spriteSheet);
+                        } else {
+                            drawOptions = { sheetFrameIndex };
+                            sheetOptionsCache.set(tileDef.spriteSheet, drawOptions);
+                        }
+                    }
+
                     if (tileDef.animationName) {
-                        spriteSheet.drawFrame(ctx, tileDef.animationName, 0, worldX, worldY);
+                        const anim = spriteSheet.getAnimation?.(tileDef.animationName);
+                        const frameCount = anim?.frameCount || anim?.frames?.length || 0;
+                        const frameRate = anim?.frameRate && anim.frameRate > 0 ? anim.frameRate : 10;
+                        const frameIndex = frameCount > 0 ? Math.floor(time * frameRate) % frameCount : 0;
+
+                        spriteSheet.drawFrame(ctx, tileDef.animationName, frameIndex, worldX, worldY, drawOptions);
                     } else {
-                        spriteSheet.drawTile(ctx, tileDef.tileId, worldX, worldY);
+                        spriteSheet.drawTile(ctx, tileDef.tileId, worldX, worldY, drawOptions);
                     }
                 } else {
                     // Fallback: draw colored rectangle

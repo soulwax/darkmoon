@@ -2,6 +2,8 @@
 
 meta:
   tile_size: 16
+  file:
+  - rock_in_water_01.png
   frames: 6
   frame_rate: 0.1
   frame_offset_start: 0

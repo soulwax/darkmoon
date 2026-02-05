@@ -1,14 +1,19 @@
 # Graphics TODO (Migration + Polish)
 
 ## Asset pipeline
-- Fix Vite `publicDir` to serve `src/Resources/` content.
-- Make all runtime asset/config loads base-aware (`import.meta.env.BASE_URL`), avoid hardcoded absolute `/...` paths.
-- Add a single “core” asset manifest (player/enemies/tiles) and keep “minimal” for fast boot.
+- [x] Fix Vite `publicDir` to serve `src/Resources/` content.
+- [x] Make all runtime asset/config loads base-aware (`import.meta.env.BASE_URL`), avoid hardcoded absolute `/...` paths.
+- [x] Add a single “core” asset manifest (player/enemies/tiles) and keep “minimal” for fast boot.
+- [x] Fix spritesheet YAML `meta.file`/`meta.files` filename mismatches.
 
 ## World rendering
-- Hook `TileMap` to a real terrain spritesheet (more than 1 grass variant) and re-enable noise variation visually.
-- Add decoration layer placement (flowers/fences/objects) with deterministic seeds.
-- Add optional debug overlays: collision tiles, spawn bounds, camera bounds.
+- [x] Hook `TileMap` to spritesheet terrain (grass + overlays).
+- [x] Add decoration layer placement (flowers/shrooms/rocks) with deterministic seed.
+- [x] Add a simple pond + dirt road stamping near spawn.
+- [x] Support multi-image animated tile sheets via `meta.files` (water + rock-in-water).
+- [ ] Add more terrain variants (cliffs, fences, carpets/floors) into world gen.
+- [ ] Add tile collision and keep player/enemy movement in-bounds.
+- [ ] Add optional debug overlays: collision tiles, spawn bounds, camera bounds.
 
 ## Characters/enemies
 - Convert enemy sprite rendering to `SpriteSheet` + `AnimatorComponent` (match player approach).
@@ -23,4 +28,3 @@
 ## Performance
 - Batch/dedupe draw calls where possible (tile culling already present).
 - Add simple sprite/particle culling bounds per system.
-

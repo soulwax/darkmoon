@@ -231,10 +231,7 @@ export class Player extends Entity {
                 break;
 
             case 'damageMultiplier':
-                // Upgrade all weapons
-                this.weapons.forEach(weapon => {
-                    weapon.damage = Math.floor(weapon.baseDamage * this.stats.damageMultiplier);
-                });
+                // Weapons apply `stats.damageMultiplier` at hit time.
                 break;
         }
     }

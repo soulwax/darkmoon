@@ -5,6 +5,8 @@ meta:
   frames: 1
   frame_rate: 0
   loop: false
+  file:
+  - carpet.png
 
 tiles:
   # RED CARPET SET (top-left quadrant)

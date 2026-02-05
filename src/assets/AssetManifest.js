@@ -57,7 +57,15 @@ export const MinimalAssetManifest = {
 export const CoreAssetManifest = {
     spriteSheets: {
         'player': '/SpiteSheets/characters/player.yaml',
-        'grass': '/SpiteSheets/grass.yaml'
+        // World tiles
+        'grass': '/SpiteSheets/grass.yaml',
+        'dirtGrass': '/SpiteSheets/dirt-grass.yaml',
+        'decorGrass': '/SpiteSheets/decor-grass.yaml',
+        'flowers': '/SpiteSheets/flowers.yaml',
+        'shrooms': '/SpiteSheets/shrooms.yaml',
+        'objects': '/SpiteSheets/objects.yaml',
+        'water': '/SpiteSheets/water-sheet.yaml',
+        'rockInWater': '/SpiteSheets/objects/rock_in_water_frames.yaml'
     },
     images: {
         'skeleton': '/SpiteSheets/characters/skeleton.png',

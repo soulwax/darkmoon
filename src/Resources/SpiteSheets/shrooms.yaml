@@ -6,7 +6,7 @@ meta:
   frame_rate: 0
   loop: false
   file:
-  - mushroom-grass.png
+  - shrooms.png
 
 tiles:
 # Mushroom Stem 1x3 (16x48) - Vertical

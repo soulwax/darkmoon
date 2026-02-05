@@ -10,8 +10,8 @@ meta:
   variant: red
 
   file:
-  - carpet-red.png
-  - carpet-blue.png
+  - carpet_red.png
+  - carpet_blue.png
 
 tiles:
 # Helper note:

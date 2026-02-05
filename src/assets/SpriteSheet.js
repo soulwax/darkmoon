@@ -1,11 +1,16 @@
 // File: src/assets/SpriteSheet.js
 // Sprite sheet wrapper with animation support
 
+const EMPTY_DRAW_OPTIONS = {};
+
 export class SpriteSheet {
-    constructor(name, image, yamlData) {
+    constructor(name, image, yamlData, images = null) {
         this.name = name;
-        this.image = image;
         this.data = yamlData;
+
+        // Optional multi-image sheet (e.g., water tiles with per-frame atlases)
+        this.images = Array.isArray(images) && images.length > 0 ? images : [image];
+        this.image = this.images[0];
 
         // Parse metadata
         this.tileSize = yamlData.meta?.tile_size || 16;
@@ -24,7 +29,7 @@ export class SpriteSheet {
 
         for (const tile of tiles) {
             const id = tile.id;
-            const direction = tile.direction || tile.type || `tile_${id}`;
+            const direction = tile.direction || tile.type || tile.name || `tile_${id}`;
 
             // Store by both ID and direction name
             this.tiles.set(id, tile);
@@ -94,6 +99,29 @@ export class SpriteSheet {
     }
 
     /**
+     * Get the current sheet-frame index for multi-image sprite sheets.
+     * Uses `meta.files` + `meta.frame_rate` (heuristic: < 1 => seconds per frame, otherwise FPS).
+     * @param {number} timeSeconds
+     * @returns {number}
+     */
+    getSheetFrameIndex(timeSeconds = 0) {
+        const frameCount = this.images?.length || 0;
+        if (frameCount <= 1) return 0;
+
+        const frameRate = this.data?.meta?.frame_rate;
+        if (typeof frameRate !== 'number' || frameRate <= 0) return 0;
+
+        const secondsPerFrame = frameRate < 1 ? frameRate : 1 / frameRate;
+        if (!Number.isFinite(secondsPerFrame) || secondsPerFrame <= 0) return 0;
+
+        const offset = Number.isFinite(this.data?.meta?.frame_offset_start)
+            ? Math.max(0, Math.floor(this.data.meta.frame_offset_start))
+            : 0;
+
+        return (offset + Math.floor(timeSeconds / secondsPerFrame)) % frameCount;
+    }
+
+    /**
      * Draw a specific frame from an animation
      * @param {CanvasRenderingContext2D} ctx
      * @param {string} animationName
@@ -102,7 +130,7 @@ export class SpriteSheet {
      * @param {number} y - Destination Y
      * @param {Object} [options] - Drawing options
      */
-    drawFrame(ctx, animationName, frameIndex, x, y, options = {}) {
+    drawFrame(ctx, animationName, frameIndex, x, y, options) {
         const animation = this.animations.get(animationName);
         if (!animation) {
             console.warn(`Animation not found: ${animationName}`);
@@ -110,7 +138,7 @@ export class SpriteSheet {
         }
 
         const frame = animation.frames[frameIndex % animation.frames.length];
-        this._drawFrame(ctx, frame, x, y, options);
+        this._drawFrame(ctx, frame, x, y, options || EMPTY_DRAW_OPTIONS);
     }
 
     /**
@@ -121,7 +149,7 @@ export class SpriteSheet {
      * @param {number} y
      * @param {Object} [options]
      */
-    drawTile(ctx, tileId, x, y, options = {}) {
+    drawTile(ctx, tileId, x, y, options) {
         const tile = this.tiles.get(tileId);
         if (!tile) {
             console.warn(`Tile not found: ${tileId}`);
@@ -135,7 +163,7 @@ export class SpriteSheet {
             height: tile.height || this.tileSize
         };
 
-        this._drawFrame(ctx, frame, x, y, options);
+        this._drawFrame(ctx, frame, x, y, options || EMPTY_DRAW_OPTIONS);
     }
 
     /**
@@ -149,8 +177,11 @@ export class SpriteSheet {
             alpha = 1,
             rotation = 0,
             originX = 0.5,
-            originY = 0.5
+            originY = 0.5,
+            sheetFrameIndex = 0
         } = options;
+
+        const sourceImage = this.images?.[sheetFrameIndex] || this.image;
 
         const width = frame.width * scale;
         const height = frame.height * scale;
@@ -177,7 +208,7 @@ export class SpriteSheet {
 
         // Draw image centered on origin
         ctx.drawImage(
-            this.image,
+            sourceImage,
             frame.x, frame.y,           // Source position
             frame.width, frame.height,  // Source size
             -width * originX,           // Dest X (centered)

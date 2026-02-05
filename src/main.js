@@ -68,6 +68,13 @@ class Application {
         // Setup UI event handlers
         this.setupUI();
 
+        // Debug/dev convenience: auto-start game via URL param (?autostart=1)
+        const params = new URLSearchParams(window.location.search);
+        if (params.has('autostart')) {
+            this.hideMenu();
+            this.startGame();
+        }
+
         console.log('Darkmoon ready!');
     }
 
@@ -93,15 +100,6 @@ class Application {
         // Listen for game over
         eventBus.on(GameEvents.GAME_OVER, (data) => {
             this.showGameOver(data);
-        });
-
-        // Pause handling
-        eventBus.on(GameEvents.GAME_PAUSE, () => {
-            this.game.pause();
-        });
-
-        eventBus.on(GameEvents.GAME_RESUME, () => {
-            this.game.resume();
         });
     }
 

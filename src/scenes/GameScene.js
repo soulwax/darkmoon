@@ -12,6 +12,7 @@ import { MagicOrbs } from '../weapons/MagicOrbs.js';
 import { MagicMissiles } from '../weapons/MagicMissiles.js';
 import { LightningStrike } from '../weapons/LightningStrike.js';
 import { Sword } from '../weapons/Sword.js';
+import { Longsword } from '../weapons/Longsword.js';
 import { eventBus, GameEvents } from '../core/EventBus.js';
 import { HUD } from '../ui/HUD.js';
 import { LevelUpScreen } from '../ui/LevelUpScreen.js';
@@ -122,6 +123,7 @@ export class GameScene extends Scene {
 
         // Give starting weapon (Sword for melee combat)
         this.player.addWeapon(Sword);
+        this.player.addWeapon(Longsword, { particleSystem: this.particleSystem });
 
         // Setup spawn system with asset loader for enemy sprites
         this.spawnSystem = new SpawnSystem(this.config, this.camera, this.assetLoader);
@@ -153,32 +155,243 @@ export class GameScene extends Scene {
     }
 
     _generateWorld() {
-        this.tileMap.init(
-            this.config.world.worldWidthTiles,
-            this.config.world.worldHeightTiles
-        );
+        const width = this.config.world.worldWidthTiles;
+        const height = this.config.world.worldHeightTiles;
 
-        // Optional: use sprite-based ground if available
-        const grassSprite = this.assetLoader?.getSpriteSheet?.('grass') || null;
-        if (grassSprite) {
-            this.tileMap.registerSpriteSheet('grass', grassSprite);
+        this.tileMap.init(width, height);
 
-            this.tileMap.defineTileType(1, { spriteSheet: 'grass', tileId: 0, walkable: true });
-            this.tileMap.defineTileType(2, { spriteSheet: 'grass', tileId: 0, walkable: true });
-            this.tileMap.defineTileType(3, { spriteSheet: 'grass', tileId: 0, walkable: true });
-        } else {
-            // Define tile types (color fallback)
-            this.tileMap.defineTileType(1, { color: '#2d5a27', walkable: true });
-            this.tileMap.defineTileType(2, { color: '#3d6a37', walkable: true });
-            this.tileMap.defineTileType(3, { color: '#1d4a17', walkable: true });
+        // --- Sprite sheets ---
+        const sheets = {
+            grass: this.assetLoader?.getSpriteSheet?.('grass') || null,
+            water: this.assetLoader?.getSpriteSheet?.('water') || null,
+            dirtGrass: this.assetLoader?.getSpriteSheet?.('dirtGrass') || null,
+            decorGrass: this.assetLoader?.getSpriteSheet?.('decorGrass') || null,
+            flowers: this.assetLoader?.getSpriteSheet?.('flowers') || null,
+            shrooms: this.assetLoader?.getSpriteSheet?.('shrooms') || null,
+            objects: this.assetLoader?.getSpriteSheet?.('objects') || null,
+            rockInWater: this.assetLoader?.getSpriteSheet?.('rockInWater') || null
+        };
+
+        for (const [name, sheet] of Object.entries(sheets)) {
+            if (sheet) this.tileMap.registerSpriteSheet(name, sheet);
         }
 
-        // Generate ground
-        this.tileMap.generateGround({
-            baseTile: 1,
-            noiseTiles: [2, 3],
-            noiseChance: 0.15
-        });
+        // --- Tile type IDs ---
+        const G = {
+            grass: 1,
+            waterFill: 10,
+            waterNW: 11,
+            waterN: 12,
+            waterNE: 13,
+            waterE: 14,
+            waterSE: 15,
+            waterS: 16,
+            waterSW: 17,
+            waterW: 18
+        };
+
+        const D = {
+            dirtHWest: 50,
+            dirtHCenter: 51,
+            dirtHEast: 52,
+            dirtVNorth: 53,
+            dirtVCenter: 54,
+            dirtVSouth: 55,
+
+            decorGrass0: 60,
+
+            flower0: 70,
+
+            shroomCluster: 90,
+
+            rock1: 100,
+            rock2: 101,
+            rock3: 102,
+
+            rockInWater: 110
+        };
+
+        // --- Ground (always) ---
+        if (sheets.grass) {
+            this.tileMap.defineTileType(G.grass, { spriteSheet: 'grass', tileId: 0, walkable: true });
+        } else {
+            this.tileMap.defineTileType(G.grass, { color: '#2d5a27', walkable: true });
+        }
+        this.tileMap.fillRect('ground', 0, 0, width, height, G.grass);
+
+        // --- Water tiles (optional) ---
+        if (sheets.water) {
+            this.tileMap.defineTileType(G.waterFill, { spriteSheet: 'water', tileId: 12, walkable: false });
+            this.tileMap.defineTileType(G.waterNW, { spriteSheet: 'water', tileId: 0, walkable: false });
+            this.tileMap.defineTileType(G.waterN, { spriteSheet: 'water', tileId: 1, walkable: false });
+            this.tileMap.defineTileType(G.waterNE, { spriteSheet: 'water', tileId: 2, walkable: false });
+            this.tileMap.defineTileType(G.waterE, { spriteSheet: 'water', tileId: 3, walkable: false });
+            this.tileMap.defineTileType(G.waterSE, { spriteSheet: 'water', tileId: 4, walkable: false });
+            this.tileMap.defineTileType(G.waterS, { spriteSheet: 'water', tileId: 5, walkable: false });
+            this.tileMap.defineTileType(G.waterSW, { spriteSheet: 'water', tileId: 6, walkable: false });
+            this.tileMap.defineTileType(G.waterW, { spriteSheet: 'water', tileId: 7, walkable: false });
+        }
+
+        // --- Dirt path overlay (optional) ---
+        if (sheets.dirtGrass) {
+            this.tileMap.defineTileType(D.dirtHWest, { spriteSheet: 'dirtGrass', tileId: 13, walkable: true });
+            this.tileMap.defineTileType(D.dirtHCenter, { spriteSheet: 'dirtGrass', tileId: 14, walkable: true });
+            this.tileMap.defineTileType(D.dirtHEast, { spriteSheet: 'dirtGrass', tileId: 15, walkable: true });
+            this.tileMap.defineTileType(D.dirtVNorth, { spriteSheet: 'dirtGrass', tileId: 0, walkable: true });
+            this.tileMap.defineTileType(D.dirtVCenter, { spriteSheet: 'dirtGrass', tileId: 1, walkable: true });
+            this.tileMap.defineTileType(D.dirtVSouth, { spriteSheet: 'dirtGrass', tileId: 2, walkable: true });
+        }
+
+        // --- Decorations (optional) ---
+        if (sheets.decorGrass) {
+            for (let i = 0; i < 4; i++) {
+                this.tileMap.defineTileType(D.decorGrass0 + i, { spriteSheet: 'decorGrass', tileId: i, walkable: true });
+            }
+        }
+
+        if (sheets.flowers) {
+            for (let i = 0; i < 16; i++) {
+                this.tileMap.defineTileType(D.flower0 + i, { spriteSheet: 'flowers', tileId: i, walkable: true });
+            }
+        }
+
+        if (sheets.shrooms) {
+            this.tileMap.defineTileType(D.shroomCluster, { spriteSheet: 'shrooms', tileId: 3, walkable: false });
+        }
+
+        if (sheets.objects) {
+            this.tileMap.defineTileType(D.rock1, { spriteSheet: 'objects', tileId: 12, walkable: false });
+            this.tileMap.defineTileType(D.rock2, { spriteSheet: 'objects', tileId: 13, walkable: false });
+            this.tileMap.defineTileType(D.rock3, { spriteSheet: 'objects', tileId: 14, walkable: false });
+        }
+
+        if (sheets.rockInWater) {
+            this.tileMap.defineTileType(D.rockInWater, { spriteSheet: 'rockInWater', tileId: 0, walkable: false });
+        }
+
+        // --- Procedural placement ---
+        const mulberry32 = (seed) => () => {
+            let t = (seed += 0x6D2B79F5);
+            t = Math.imul(t ^ (t >>> 15), t | 1);
+            t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+            return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+        const rand = mulberry32(1337);
+        const randInt = (min, max) => Math.floor(rand() * (max - min + 1)) + min;
+
+        const centerX = Math.floor(width / 2);
+        const centerY = Math.floor(height / 2);
+
+        const stampPond = (x0, y0, w, h) => {
+            if (!sheets.water) return;
+            if (w < 2 || h < 2) return;
+
+            const x1 = x0 + w - 1;
+            const y1 = y0 + h - 1;
+
+            // Corners
+            this.tileMap.setTile('ground', x0, y0, G.waterNW);
+            this.tileMap.setTile('ground', x1, y0, G.waterNE);
+            this.tileMap.setTile('ground', x1, y1, G.waterSE);
+            this.tileMap.setTile('ground', x0, y1, G.waterSW);
+
+            // Edges
+            for (let x = x0 + 1; x < x1; x++) {
+                this.tileMap.setTile('ground', x, y0, G.waterN);
+                this.tileMap.setTile('ground', x, y1, G.waterS);
+            }
+            for (let y = y0 + 1; y < y1; y++) {
+                this.tileMap.setTile('ground', x0, y, G.waterW);
+                this.tileMap.setTile('ground', x1, y, G.waterE);
+            }
+
+            // Fill
+            for (let y = y0 + 1; y < y1; y++) {
+                for (let x = x0 + 1; x < x1; x++) {
+                    this.tileMap.setTile('ground', x, y, G.waterFill);
+                }
+            }
+        };
+
+        const stampHorizontalPath = (x0, y0, length) => {
+            if (!sheets.dirtGrass) return;
+            if (length < 2) return;
+
+            this.tileMap.setTile('decoration', x0, y0, D.dirtHWest);
+            for (let x = x0 + 1; x < x0 + length - 1; x++) {
+                this.tileMap.setTile('decoration', x, y0, D.dirtHCenter);
+            }
+            this.tileMap.setTile('decoration', x0 + length - 1, y0, D.dirtHEast);
+        };
+
+        const stampVerticalPath = (x0, y0, length) => {
+            if (!sheets.dirtGrass) return;
+            if (length < 2) return;
+
+            this.tileMap.setTile('decoration', x0, y0, D.dirtVNorth);
+            for (let y = y0 + 1; y < y0 + length - 1; y++) {
+                this.tileMap.setTile('decoration', x0, y, D.dirtVCenter);
+            }
+            this.tileMap.setTile('decoration', x0, y0 + length - 1, D.dirtVSouth);
+        };
+
+        // Place a small pond near the start (if water is available)
+        if (sheets.water) {
+            const pondW = 12;
+            const pondH = 9;
+            const pondX = Math.max(2, centerX - 14);
+            const pondY = Math.max(2, centerY - 13);
+            stampPond(pondX, pondY, pondW, pondH);
+
+            // Add a few animated rocks in the water (optional)
+            if (sheets.rockInWater) {
+                for (let i = 0; i < 3; i++) {
+                    const rx = randInt(pondX + 2, pondX + pondW - 3);
+                    const ry = randInt(pondY + 2, pondY + pondH - 3);
+                    if (this.tileMap.getTile('ground', rx, ry) === G.waterFill) {
+                        this.tileMap.setTile('decoration', rx, ry, D.rockInWater);
+                    }
+                }
+            }
+        }
+
+        // Simple road cross (optional)
+        stampHorizontalPath(centerX - 18, centerY + 6, 37);
+        stampVerticalPath(centerX + 10, centerY - 16, 33);
+
+        // Scatter decorations
+        const safeRadius = 6;
+        for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+                // Keep a clear area around spawn
+                if (Math.abs(x - centerX) <= safeRadius && Math.abs(y - centerY) <= safeRadius) continue;
+
+                // Don't overwrite authored decoration
+                if (this.tileMap.getTile('decoration', x, y) !== 0) continue;
+
+                const groundTile = this.tileMap.getTile('ground', x, y);
+
+                // Water-only decoration
+                if (groundTile === G.waterFill) {
+                    if (sheets.rockInWater && rand() < 0.02) {
+                        this.tileMap.setTile('decoration', x, y, D.rockInWater);
+                    }
+                    continue;
+                }
+
+                // Land decorations
+                const roll = rand();
+                if (sheets.objects && roll < 0.004) {
+                    this.tileMap.setTile('decoration', x, y, randInt(D.rock1, D.rock3));
+                } else if (sheets.shrooms && roll < 0.010) {
+                    this.tileMap.setTile('decoration', x, y, D.shroomCluster);
+                } else if (sheets.flowers && roll < 0.030) {
+                    this.tileMap.setTile('decoration', x, y, D.flower0 + randInt(0, 15));
+                } else if (sheets.decorGrass && roll < 0.150) {
+                    this.tileMap.setTile('decoration', x, y, D.decorGrass0 + randInt(0, 3));
+                }
+            }
+        }
     }
 
     _showLevelUpScreen() {
@@ -302,6 +515,12 @@ export class GameScene extends Scene {
             }
         }
 
+        // Manual longsword slash (Space)
+        if (this.inputManager.isActionPressed('jump')) {
+            const longsword = this.player.getWeapon(Longsword);
+            longsword?.trigger(enemies);
+        }
+
         // Update player weapons with enemy list
         for (const weapon of this.player.weapons) {
             weapon.update(deltaTime, enemies);
@@ -318,17 +537,11 @@ export class GameScene extends Scene {
     }
 
     draw(ctx, alpha) {
-        // Debug: draw info at screen position (before camera transform)
-        ctx.fillStyle = '#ff0';
-        ctx.font = '14px Arial';
-        ctx.fillText(`Player: ${Math.round(this.player?.x || 0)}, ${Math.round(this.player?.y || 0)}`, 200, 30);
-        ctx.fillText(`Camera: ${Math.round(this.camera?.position?.x || 0)}, ${Math.round(this.camera?.position?.y || 0)}`, 200, 50);
-
         // Apply camera transform
         this.camera.applyTransform(ctx);
 
         // Draw tile map
-        this.tileMap.draw(ctx, this.camera);
+        this.tileMap.draw(ctx, this.camera, this.gameTime);
 
         // Draw spawn system (enemies, XP gems)
         this.spawnSystem.draw(ctx, this.camera);

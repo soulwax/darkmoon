@@ -9,11 +9,20 @@ export class Weapon {
         this.name = options.name || 'Weapon';
 
         // Damage
-        this.baseDamage = options.damage || 10;
-        this.damage = this.baseDamage;
+        this.baseDamage = options.damage ?? 10;
+        try {
+            this.damage = this.baseDamage;
+        } catch {
+            // Some weapons expose `damage` as a getter-only accessor.
+            // In modules (strict mode) assigning would throw, so skip.
+        }
 
         // Cooldown
-        this.cooldown = options.cooldown || 1.0;
+        try {
+            this.cooldown = options.cooldown ?? 1.0;
+        } catch {
+            // Some weapons expose `cooldown` as a getter-only accessor.
+        }
         this.cooldownTimer = 0;
 
         // Level system

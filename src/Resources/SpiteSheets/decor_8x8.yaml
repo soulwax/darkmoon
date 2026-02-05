@@ -5,6 +5,8 @@ meta:
   frames: 1
   frame_rate: 0
   loop: false
+  file:
+  - decor_8x8.png
 
 tiles:
   # Top row: small rocks on grass (left → right 0,0 .. 24,0)

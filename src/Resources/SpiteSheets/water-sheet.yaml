@@ -2,25 +2,27 @@
 
 meta:
   tile_size: 16
+  file:
+  - water1.png
   frames: 6
   frame_rate: 0.1
   frame_offset_start: 0
   frame_offset_x: 0
   frame_offset_y: 0
-  frame_1: water-1.png
-  frame_2: water-2.png
-  frame_3: water-3.png
-  frame_4: water-4.png
-  frame_5: water-5.png
-  frame_6: water-6.png
+  frame_1: water1.png
+  frame_2: water2.png
+  frame_3: water3.png
+  frame_4: water4.png
+  frame_5: water5.png
+  frame_6: water6.png
   loop: true
   files:
-  - water-1.png
-  - water-2.png
-  - water-3.png
-  - water-4.png
-  - water-5.png
-  - water-6.png
+  - water1.png
+  - water2.png
+  - water3.png
+  - water4.png
+  - water5.png
+  - water6.png
 
 tiles:
 - id: 0
@@ -445,3 +447,35 @@ tiles:
   concealment: 0.5
   editor_color: "#2196F3"
   editor_icon: water_island_edge_southwest
+
+- id: 12
+  name: pond_fill
+  atlas_x: 16
+  atlas_y: 16
+  tile_size: 16
+  layer: ground
+  category: water
+  walkable: false
+  swimmable: true
+  climbable: true
+  crawlable: false
+  fly_through: true
+  blocks_movement: false
+  movement_cost: 14.4
+  has_collision: false
+  contains_transparency: false
+  alpha_mode: alpha_blend
+  casts_shadow: false
+  receives_shadow: true
+  z_bias: 0
+  interactable: false
+  destructible: false
+  collectible: false
+  hit_points: 0
+  footstep_sound: water
+  impact_sound: water_splash
+  ambient_sound: null
+  provides_cover: false
+  concealment: 0.5
+  editor_color: "#2196F3"
+  editor_icon: pond_fill

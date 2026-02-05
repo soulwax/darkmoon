@@ -45,6 +45,8 @@ export class Game {
     _setupEventListeners() {
         // Game state events
         this.eventBus.on(GameEvents.GAME_START, () => this.start());
+        // Pause/resume are treated as commands coming from other systems.
+        // Do not re-emit these events from the handlers to avoid recursion.
         this.eventBus.on(GameEvents.GAME_PAUSE, () => this.pause());
         this.eventBus.on(GameEvents.GAME_RESUME, () => this.resume());
         this.eventBus.on(GameEvents.GAME_RESTART, () => this.restart());
@@ -95,10 +97,9 @@ export class Game {
      * Pause the game
      */
     pause() {
-        if (!this.running || this.gameOver) return;
+        if (!this.running || this.gameOver || this.paused) return;
         this.paused = true;
         this.gameLoop.pause();
-        this.eventBus.emit(GameEvents.GAME_PAUSE);
 
         console.log('Game paused');
     }
@@ -107,10 +108,9 @@ export class Game {
      * Resume the game
      */
     resume() {
-        if (!this.paused) return;
+        if (!this.paused || this.gameOver) return;
         this.paused = false;
         this.gameLoop.resume();
-        this.eventBus.emit(GameEvents.GAME_RESUME);
 
         console.log('Game resumed');
     }

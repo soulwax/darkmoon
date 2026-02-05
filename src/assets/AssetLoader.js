@@ -123,25 +123,47 @@ export class AssetLoader {
         const yamlData = await this.loadYaml(key + '_yaml', yamlPath);
 
         // Determine image path
+        const yamlDir = yamlPath.substring(0, yamlPath.lastIndexOf('/') + 1);
+        const metaFiles = yamlData.meta?.files;
         let imgPath = imagePath;
-        if (!imgPath && yamlData.meta && yamlData.meta.file) {
-            // Get image path from YAML, relative to YAML file location
-            const yamlDir = yamlPath.substring(0, yamlPath.lastIndexOf('/') + 1);
-            const fileName = Array.isArray(yamlData.meta.file)
-                ? yamlData.meta.file[0]
-                : yamlData.meta.file;
-            imgPath = yamlDir + fileName;
+        if (!imgPath) {
+            if (yamlData.meta?.file) {
+                const fileName = Array.isArray(yamlData.meta.file)
+                    ? yamlData.meta.file[0]
+                    : yamlData.meta.file;
+                imgPath = yamlDir + fileName;
+            } else if (Array.isArray(metaFiles) && metaFiles.length > 0) {
+                imgPath = yamlDir + metaFiles[0];
+            }
         }
 
         if (!imgPath) {
             throw new Error(`No image path specified for sprite sheet: ${key}`);
         }
 
-        // Load image
+        // Load base image
         const image = await this.loadImage(key + '_img', imgPath);
 
+        // Load optional sheet frames (multi-image atlases)
+        let sheetImages = null;
+        if (Array.isArray(metaFiles) && metaFiles.length > 0) {
+            const results = await Promise.allSettled(
+                metaFiles.map(async (fileName, index) => {
+                    const framePath = yamlDir + fileName;
+                    if (framePath === imgPath) return image;
+                    return this.loadImage(`${key}_img_frame_${index}`, framePath);
+                })
+            );
+
+            sheetImages = results.map((result) => {
+                if (result.status === 'fulfilled') return result.value;
+                console.warn(`Sprite sheet frame failed to load for ${key}: ${result.reason?.message || result.reason}`);
+                return image;
+            });
+        }
+
         // Create sprite sheet
-        const spriteSheet = new SpriteSheet(key, image, yamlData);
+        const spriteSheet = new SpriteSheet(key, image, yamlData, sheetImages);
         this.spriteSheets.set(key, spriteSheet);
 
         return spriteSheet;

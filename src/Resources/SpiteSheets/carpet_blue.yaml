@@ -7,7 +7,7 @@ meta:
   loop: false
   variant: blue
   file:
-  - carpet-blue.png
+  - carpet_blue.png
 
 tiles:
 # Carpet Strip 1x3 (16x48) - Vertical

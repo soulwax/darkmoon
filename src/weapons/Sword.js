@@ -42,6 +42,11 @@ export class Sword extends Weapon {
         this.currentCooldown = 0;
     }
 
+    _applyUpgrade() {
+        // Sword stats are derived from getters that depend on `level`.
+        // No direct stat mutation needed on upgrade.
+    }
+
     /**
      * Get current stats based on level
      */
@@ -212,7 +217,7 @@ export class Sword extends Weapon {
         this.hitThisSwing.add(enemy);
 
         // Apply damage
-        const damage = this.damage * this.owner.damageMultiplier;
+        const damage = Math.floor(this.damage * (this.owner.stats?.damageMultiplier || 1));
         enemy.takeDamage(damage, this.owner);
 
         // Apply knockback
