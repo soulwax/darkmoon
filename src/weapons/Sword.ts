@@ -135,17 +135,18 @@ export class Sword extends Weapon {
         this.hitThisSwing.clear();
         this.trailPositions = [];
 
-        // Trigger attack animation on owner
-        const animator = this.owner.getComponent<AnimatorComponent>('AnimatorComponent');
-        if (animator) {
-            // Determine direction from angle
-            let dir: Direction = 'down';
-            if (targetAngle > -Math.PI * 0.75 && targetAngle < -Math.PI * 0.25) dir = 'up';
-            else if (targetAngle >= -Math.PI * 0.25 && targetAngle <= Math.PI * 0.25) dir = 'right';
-            else if (targetAngle > Math.PI * 0.25 && targetAngle < Math.PI * 0.75) dir = 'down';
-            else dir = 'left';
+        // Trigger attack animation on owner (lock so movement doesn't instantly override it)
+        let dir: Direction = 'down';
+        if (targetAngle > -Math.PI * 0.75 && targetAngle < -Math.PI * 0.25) dir = 'up';
+        else if (targetAngle >= -Math.PI * 0.25 && targetAngle <= Math.PI * 0.25) dir = 'right';
+        else if (targetAngle > Math.PI * 0.25 && targetAngle < Math.PI * 0.75) dir = 'down';
+        else dir = 'left';
 
-            animator.setState('attack', dir);
+        if (typeof (this.owner as any).lockAnimation === 'function') {
+            (this.owner as any).lockAnimation('attack', dir, this.swingDuration * 1.2, 1.25);
+        } else {
+            const animator = this.owner.getComponent<AnimatorComponent>('AnimatorComponent');
+            animator?.setState('attack', dir);
         }
     }
 
@@ -218,6 +219,9 @@ export class Sword extends Weapon {
      */
     _checkHits(enemies: Enemy[]) {
         const currentAngle = this._getCurrentSwingAngle();
+        // Only apply damage during the "active" portion of the swing.
+        if (this.swingProgress < 0.12 || this.swingProgress > 0.88) return;
+        const hitWindow = this.arc * 0.35;
 
         for (const enemy of enemies) {
             if (enemy.destroyed || this.hitThisSwing.has(enemy)) continue;
@@ -233,7 +237,7 @@ export class Sword extends Weapon {
             const enemyAngle = Math.atan2(dy, dx);
             const angleDiff = MathUtils.normalizeAngle(enemyAngle - currentAngle);
 
-            if (Math.abs(angleDiff) < this.arc / 4) {
+            if (Math.abs(angleDiff) < hitWindow) {
                 this._hitEnemy(enemy, enemyAngle);
             }
         }

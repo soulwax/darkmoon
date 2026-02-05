@@ -49,6 +49,7 @@ export class Player extends Entity {
     baseMoveSpeed: number;
     basePickupRange: number;
     effects: PlayerEffect[];
+    animationLockTimer: number;
 
     constructor(x: number, y: number, config: GameConfig, spriteSheet: SpriteSheet | null) {
         super(x, y);
@@ -83,6 +84,9 @@ export class Player extends Entity {
 
         // Active timed effects (powerups, etc.)
         this.effects = [];
+
+        // Prevent movement state from instantly overriding short one-shot animations (attacks).
+        this.animationLockTimer = 0;
 
         // Setup components
         this._setupComponents(config, spriteSheet);
@@ -159,17 +163,28 @@ export class Player extends Entity {
         // Update animator based on movement
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
         if (animator) {
-            if (movement.isDashing) {
-                animator.setState('run', movement.facingDirection);
-                animator.setSpeed(2.0);
-            } else if (movement.isMoving()) {
-                animator.setState('run', movement.facingDirection);
-                animator.setSpeed(1.0);
-            } else {
-                animator.setState('idle', movement.facingDirection);
-                animator.setSpeed(1.0);
+            if (this.animationLockTimer <= 0) {
+                if (movement.isDashing) {
+                    animator.setState('run', movement.facingDirection);
+                    animator.setSpeed(2.0);
+                } else if (movement.isMoving()) {
+                    animator.setState('run', movement.facingDirection);
+                    animator.setSpeed(1.0);
+                } else {
+                    animator.setState('idle', movement.facingDirection);
+                    animator.setSpeed(1.0);
+                }
             }
         }
+    }
+
+    lockAnimation(state: string, direction: Direction, durationSeconds: number, speed: number = 1.0) {
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        if (!animator) return;
+
+        animator.setState(state, direction);
+        animator.setSpeed(speed);
+        this.animationLockTimer = Math.max(this.animationLockTimer, Math.max(0, durationSeconds));
     }
 
     /**
@@ -427,6 +442,10 @@ export class Player extends Entity {
 
     update(deltaTime: number) {
         super.update(deltaTime);
+
+        if (this.animationLockTimer > 0) {
+            this.animationLockTimer -= deltaTime;
+        }
 
         // Update timed effects
         if (this.effects.length > 0) {

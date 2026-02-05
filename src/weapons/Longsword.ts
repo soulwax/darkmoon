@@ -48,7 +48,7 @@ export class Longsword extends Weapon {
         // Slash visual state
         this.slashActive = false;
         this.slashTimer = 0;
-        this.slashDuration = options.slashDuration || 0.08;
+        this.slashDuration = options.slashDuration || 0.11;
         this.slashDirection = 'down';
         this.slashX = 0;
         this.slashY = 0;
@@ -128,9 +128,10 @@ export class Longsword extends Weapon {
 
         // Play attack animation (vertical slash)
         const animator = this.owner.getComponent<AnimatorComponent>('AnimatorComponent');
-        if (animator) {
-            const attackDir = facing === 'up' ? 'up' : 'down';
-            animator.setState('attack', attackDir);
+        if (typeof (this.owner as any).lockAnimation === 'function') {
+            (this.owner as any).lockAnimation('attack', facing, this.slashDuration * 1.6, 1.3);
+        } else if (animator) {
+            animator.setState('attack', facing);
         }
 
         // Particle slash effect
