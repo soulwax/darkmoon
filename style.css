@@ -206,9 +206,13 @@ button {
     top: 104px;
     z-index: 20;
     pointer-events: all;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
 }
 
-#hudRestartButton {
+#hudRestartButton,
+#audioOptionsButton {
     background: var(--px-panel);
     color: var(--px-text);
     border: 2px solid var(--px-border);
@@ -222,12 +226,14 @@ button {
     transition: transform 0.08s steps(2, end), box-shadow 0.08s steps(2, end);
 }
 
-#hudRestartButton:hover {
+#hudRestartButton:hover,
+#audioOptionsButton:hover {
     transform: translate(-1px, -1px);
     box-shadow: 5px 5px 0 0 var(--px-shadow);
 }
 
-#hudRestartButton:active {
+#hudRestartButton:active,
+#audioOptionsButton:active {
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 0 var(--px-shadow);
 }
@@ -236,7 +242,8 @@ button {
 #levelUpScreen,
 #level-up-screen,
 #gameOverScreen,
-#startScreen {
+#startScreen,
+#audioOptionsScreen {
     position: absolute;
     top: 0;
     left: 0;
@@ -267,6 +274,103 @@ button {
     box-shadow:
         0 0 0 4px var(--px-border-dark),
         8px 8px 0 0 var(--px-shadow);
+}
+
+.audio-options-content {
+    width: min(92%, 640px);
+    padding: 24px 20px;
+    background: var(--px-panel);
+    border: 3px solid var(--px-border);
+    outline: 3px solid var(--px-black);
+    box-shadow:
+        0 0 0 4px var(--px-border-dark),
+        8px 8px 0 0 var(--px-shadow);
+}
+
+.audio-options-content h2 {
+    color: var(--px-border);
+    font-size: clamp(22px, 4vw, 36px);
+    margin-bottom: 16px;
+    text-align: center;
+    text-shadow: 2px 2px 0 var(--px-black);
+}
+
+.audio-option-row {
+    display: grid;
+    grid-template-columns: 120px minmax(0, 1fr) 56px;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-bottom: 8px;
+    background: var(--px-panel-dark);
+    border: 2px solid var(--px-border-dark);
+    outline: 1px solid var(--px-black);
+    box-shadow: 2px 2px 0 0 var(--px-shadow);
+    color: var(--px-text);
+    font-size: 12px;
+}
+
+.audio-option-row select,
+.audio-option-row input[type="range"] {
+    width: 100%;
+    font: inherit;
+}
+
+.audio-option-row select {
+    background: #10140c;
+    color: var(--px-text);
+    border: 2px solid var(--px-border-dark);
+    outline: 1px solid var(--px-black);
+    padding: 4px 6px;
+}
+
+.audio-option-row strong {
+    text-align: right;
+    font-size: 11px;
+}
+
+.audio-option-row.checkbox-row {
+    grid-template-columns: auto 1fr;
+    gap: 8px;
+}
+
+.audio-option-row.checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--px-success-1);
+}
+
+.audio-option-actions {
+    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+}
+
+#audioOptionsCloseButton {
+    background: repeating-linear-gradient(
+        90deg,
+        var(--px-success-0) 0 8px,
+        var(--px-success-1) 8px 16px
+    );
+    color: #fff7e3;
+    border: 2px solid #2a140e;
+    outline: 2px solid var(--px-black);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 0 var(--px-shadow);
+}
+
+#audioOptionsCloseButton:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 0 var(--px-shadow);
+}
+
+#audioOptionsCloseButton:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 var(--px-shadow);
 }
 
 .level-up-content h2,
@@ -448,9 +552,17 @@ button {
     color: var(--px-success-1);
 }
 
+.start-actions {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 /* Shared Buttons */
 #restartButton,
-#startButton {
+#startButton,
+#startAudioOptionsButton {
     color: #fff7e3;
     border: 2px solid #2a140e;
     outline: 2px solid var(--px-black);
@@ -480,14 +592,24 @@ button {
     );
 }
 
+#startAudioOptionsButton {
+    background: repeating-linear-gradient(
+        90deg,
+        #2e5b6b 0 8px,
+        #4d8aa0 8px 16px
+    );
+}
+
 #restartButton:hover,
-#startButton:hover {
+#startButton:hover,
+#startAudioOptionsButton:hover {
     transform: translate(-1px, -1px);
     box-shadow: 5px 5px 0 0 var(--px-shadow);
 }
 
 #restartButton:active,
-#startButton:active {
+#startButton:active,
+#startAudioOptionsButton:active {
     transform: translate(2px, 2px);
     box-shadow: 2px 2px 0 0 var(--px-shadow);
 }
@@ -536,6 +658,11 @@ button {
         padding: 6px 8px;
     }
 
+    #audioOptionsButton {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+
     .stat-bar {
         padding: 6px 8px;
     }
@@ -547,9 +674,16 @@ button {
 
     .level-up-content,
     .game-over-content,
-    .start-content {
+    .start-content,
+    .audio-options-content {
         width: 95%;
         padding: 20px 14px;
+    }
+
+    .audio-option-row {
+        grid-template-columns: 92px minmax(0, 1fr) 48px;
+        font-size: 10px;
+        padding: 6px 7px;
     }
 
     .upgrade-option,

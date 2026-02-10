@@ -4,6 +4,7 @@ import { Game } from './Game';
 import { assetLoader } from './assets/AssetLoader';
 import { CoreAssetManifest } from './assets/AssetManifest';
 import { AudioSystem } from './audio/AudioSystem';
+import { ProceduralAudioSystem } from './audio/ProceduralAudioSystem';
 import { ConfigLoader } from './config/ConfigLoader';
 import { GameConfig } from './config/GameConfig';
 import { eventBus, GameEvents } from './core/EventBus';
@@ -17,17 +18,48 @@ interface GameOverData {
     message?: string;
 }
 
+type AudioMode = 'authored' | 'procedural';
+
+interface AudioSettingsLike {
+    masterVolume?: number;
+    musicVolume?: number;
+    sfxVolume?: number;
+}
+
+interface AudioBackend {
+    unlock(): Promise<boolean> | boolean;
+    destroy(): void;
+    setEnabled(enabled: boolean): void;
+    setVolumes(settings: AudioSettingsLike): void;
+    playUiSelect(): void;
+}
+
+interface AudioPreferences extends AudioSettingsLike {
+    mode: AudioMode;
+    enabled: boolean;
+}
+
+const AUDIO_PREFS_STORAGE_KEY = 'darkmoon.audio.preferences.v1';
+
 class Application {
     game: Game | null;
     config: GameConfig | null;
     sceneManager: SceneManager | null;
-    audioSystem: AudioSystem | null;
+    audioSystem: AudioBackend | null;
+    audioPreferences: AudioPreferences;
 
     constructor() {
         this.game = null;
         this.config = null;
         this.sceneManager = null;
         this.audioSystem = null;
+        this.audioPreferences = {
+            mode: 'authored',
+            enabled: true,
+            masterVolume: 0.8,
+            musicVolume: 0.35,
+            sfxVolume: 0.85
+        };
     }
 
     async init() {
@@ -65,8 +97,10 @@ class Application {
             this.config = new GameConfig();
         }
 
-        // Setup authored audio engine and gameplay SFX hooks.
-        this.audioSystem = new AudioSystem(this.config.audio);
+        this.audioPreferences = this.loadAudioPreferences(this.config.audio);
+        this.audioSystem = this.createAudioSystem(this.audioPreferences.mode, this.audioPreferences);
+        this.audioSystem.setEnabled(this.audioPreferences.enabled);
+        this.audioSystem.setVolumes(this.audioPreferences);
 
         // Create game instance
         this.game = new Game(canvas, this.config);
@@ -98,6 +132,62 @@ class Application {
         }
 
         console.log('Darkmoon ready!');
+    }
+
+    createAudioSystem(mode: AudioMode, settings: AudioSettingsLike): AudioBackend {
+        if (mode === 'procedural') {
+            return new ProceduralAudioSystem(settings);
+        }
+        return new AudioSystem(settings);
+    }
+
+    loadAudioPreferences(configAudio: AudioSettingsLike): AudioPreferences {
+        const defaults: AudioPreferences = {
+            mode: 'authored',
+            enabled: true,
+            masterVolume: configAudio.masterVolume ?? 0.8,
+            musicVolume: configAudio.musicVolume ?? 0.35,
+            sfxVolume: configAudio.sfxVolume ?? 0.85
+        };
+
+        try {
+            const raw = localStorage.getItem(AUDIO_PREFS_STORAGE_KEY);
+            if (!raw) return defaults;
+            const parsed = JSON.parse(raw) as Partial<AudioPreferences>;
+
+            const mode: AudioMode = parsed.mode === 'procedural' ? 'procedural' : 'authored';
+            const enabled = parsed.enabled !== false;
+            const masterVolume = typeof parsed.masterVolume === 'number' ? Math.max(0, Math.min(1, parsed.masterVolume)) : defaults.masterVolume;
+            const musicVolume = typeof parsed.musicVolume === 'number' ? Math.max(0, Math.min(1, parsed.musicVolume)) : defaults.musicVolume;
+            const sfxVolume = typeof parsed.sfxVolume === 'number' ? Math.max(0, Math.min(1, parsed.sfxVolume)) : defaults.sfxVolume;
+
+            return { mode, enabled, masterVolume, musicVolume, sfxVolume };
+        } catch {
+            return defaults;
+        }
+    }
+
+    saveAudioPreferences() {
+        try {
+            localStorage.setItem(AUDIO_PREFS_STORAGE_KEY, JSON.stringify(this.audioPreferences));
+        } catch {
+            // Ignore storage quota/private mode errors.
+        }
+    }
+
+    applyAudioPreferences(recreateSystem: boolean = false) {
+        if (!this.audioSystem || recreateSystem) {
+            this.audioSystem?.destroy();
+            this.audioSystem = this.createAudioSystem(this.audioPreferences.mode, this.audioPreferences);
+        }
+
+        this.audioSystem.setEnabled(this.audioPreferences.enabled);
+        this.audioSystem.setVolumes(this.audioPreferences);
+        this.saveAudioPreferences();
+
+        if (this.audioPreferences.enabled) {
+            void this.audioSystem.unlock();
+        }
     }
 
     setupUI() {
@@ -149,6 +239,118 @@ class Application {
             if (e.code === 'KeyR' || e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
                 restartFromGameOver();
+            }
+        });
+
+        this.setupAudioOptionsUI();
+    }
+
+    setupAudioOptionsUI() {
+        const openButton = document.getElementById('audioOptionsButton');
+        const startOpenButton = document.getElementById('startAudioOptionsButton');
+        const optionsScreen = document.getElementById('audioOptionsScreen');
+        const closeButton = document.getElementById('audioOptionsCloseButton');
+        const backendSelect = document.getElementById('audioBackendSelect');
+        const enabledToggle = document.getElementById('audioEnabledToggle');
+        const masterRange = document.getElementById('audioMasterVolume');
+        const musicRange = document.getElementById('audioMusicVolume');
+        const sfxRange = document.getElementById('audioSfxVolume');
+        const masterValue = document.getElementById('audioMasterVolumeValue');
+        const musicValue = document.getElementById('audioMusicVolumeValue');
+        const sfxValue = document.getElementById('audioSfxVolumeValue');
+
+        if (
+            !(optionsScreen instanceof HTMLDivElement) ||
+            !(backendSelect instanceof HTMLSelectElement) ||
+            !(enabledToggle instanceof HTMLInputElement) ||
+            !(masterRange instanceof HTMLInputElement) ||
+            !(musicRange instanceof HTMLInputElement) ||
+            !(sfxRange instanceof HTMLInputElement)
+        ) {
+            return;
+        }
+
+        const close = () => {
+            optionsScreen.classList.add('hidden');
+            optionsScreen.style.display = 'none';
+        };
+
+        const open = () => {
+            this.audioSystem?.playUiSelect();
+            void this.audioSystem?.unlock();
+            optionsScreen.classList.remove('hidden');
+            optionsScreen.style.display = 'flex';
+        };
+
+        const syncValues = () => {
+            backendSelect.value = this.audioPreferences.mode;
+            enabledToggle.checked = this.audioPreferences.enabled;
+
+            const master = Math.round((this.audioPreferences.masterVolume ?? 0.8) * 100);
+            const music = Math.round((this.audioPreferences.musicVolume ?? 0.35) * 100);
+            const sfx = Math.round((this.audioPreferences.sfxVolume ?? 0.85) * 100);
+
+            masterRange.value = master.toString();
+            musicRange.value = music.toString();
+            sfxRange.value = sfx.toString();
+
+            if (masterValue) masterValue.textContent = `${master}%`;
+            if (musicValue) musicValue.textContent = `${music}%`;
+            if (sfxValue) sfxValue.textContent = `${sfx}%`;
+        };
+
+        const applyFromInputs = (recreateSystem: boolean = false) => {
+            this.audioPreferences.mode = backendSelect.value === 'procedural' ? 'procedural' : 'authored';
+            this.audioPreferences.enabled = enabledToggle.checked;
+            this.audioPreferences.masterVolume = Number(masterRange.value) / 100;
+            this.audioPreferences.musicVolume = Number(musicRange.value) / 100;
+            this.audioPreferences.sfxVolume = Number(sfxRange.value) / 100;
+
+            this.applyAudioPreferences(recreateSystem);
+            syncValues();
+        };
+
+        syncValues();
+
+        if (openButton) {
+            openButton.addEventListener('click', open);
+        }
+        if (startOpenButton) {
+            startOpenButton.addEventListener('click', open);
+        }
+        if (closeButton) {
+            closeButton.addEventListener('click', () => {
+                this.audioSystem?.playUiSelect();
+                close();
+            });
+        }
+
+        optionsScreen.addEventListener('click', (e) => {
+            if (e.target === optionsScreen) close();
+        });
+
+        backendSelect.addEventListener('change', () => {
+            this.audioSystem?.playUiSelect();
+            applyFromInputs(true);
+        });
+
+        enabledToggle.addEventListener('change', () => {
+            this.audioSystem?.playUiSelect();
+            applyFromInputs(false);
+        });
+
+        const onRangeInput = () => {
+            applyFromInputs(false);
+        };
+
+        masterRange.addEventListener('input', onRangeInput);
+        musicRange.addEventListener('input', onRangeInput);
+        sfxRange.addEventListener('input', onRangeInput);
+
+        window.addEventListener('keydown', (e) => {
+            if (optionsScreen.classList.contains('hidden')) return;
+            if (e.code === 'Escape') {
+                close();
             }
         });
     }

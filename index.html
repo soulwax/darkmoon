@@ -38,6 +38,7 @@
         <!-- HUD Buttons -->
         <div id="hudButtons">
             <button id="hudRestartButton" title="Restart (R)">Restart</button>
+            <button id="audioOptionsButton" title="Audio Options">Audio</button>
         </div>
 
         <!-- Level Up Screen -->
@@ -75,7 +76,52 @@
                     <p><strong>Weapons</strong> - Auto-attack nearby enemies</p>
                     <p><strong>Goal</strong> - Survive as long as possible!</p>
                 </div>
-                <button id="startButton">Start Game</button>
+                <div class="start-actions">
+                    <button id="startButton">Start Game</button>
+                    <button id="startAudioOptionsButton">Audio Options</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio Options Screen -->
+        <div id="audioOptionsScreen" class="hidden">
+            <div class="audio-options-content">
+                <h2>Audio Options</h2>
+
+                <label class="audio-option-row">
+                    <span>Audio Backend</span>
+                    <select id="audioBackendSelect">
+                        <option value="authored">Authored Samples</option>
+                        <option value="procedural">Procedural Synth</option>
+                    </select>
+                </label>
+
+                <label class="audio-option-row checkbox-row">
+                    <input id="audioEnabledToggle" type="checkbox" checked>
+                    <span>Audio Enabled</span>
+                </label>
+
+                <label class="audio-option-row">
+                    <span>Master</span>
+                    <input id="audioMasterVolume" type="range" min="0" max="100" step="1" value="80">
+                    <strong id="audioMasterVolumeValue">80%</strong>
+                </label>
+
+                <label class="audio-option-row">
+                    <span>Music</span>
+                    <input id="audioMusicVolume" type="range" min="0" max="100" step="1" value="35">
+                    <strong id="audioMusicVolumeValue">35%</strong>
+                </label>
+
+                <label class="audio-option-row">
+                    <span>SFX</span>
+                    <input id="audioSfxVolume" type="range" min="0" max="100" step="1" value="85">
+                    <strong id="audioSfxVolumeValue">85%</strong>
+                </label>
+
+                <div class="audio-option-actions">
+                    <button id="audioOptionsCloseButton">Close</button>
+                </div>
             </div>
         </div>
     </div>

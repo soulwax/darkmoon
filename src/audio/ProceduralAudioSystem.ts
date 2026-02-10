@@ -1,15 +1,46 @@
-// File: src/audio/AudioSystem.ts
-// Event-driven game audio using authored WAV files in Resources/Sounds.
+// File: src/audio/ProceduralAudioSystem.ts
+// Lightweight procedural audio engine built on Web Audio API.
 
 import { eventBus, GameEvents } from '../core/EventBus';
 
 type AudioBus = 'music' | 'sfx' | 'ui';
-type AmbientTrackKey = 'menu' | 'dungeon' | 'spring' | 'death';
 
 interface AudioSettings {
     masterVolume?: number;
     musicVolume?: number;
     sfxVolume?: number;
+}
+
+interface ToneOptions {
+    frequency: number;
+    duration?: number;
+    gain?: number;
+    type?: OscillatorType;
+    bus?: AudioBus;
+    when?: number;
+    attack?: number;
+    frequencyEnd?: number;
+    detune?: number;
+    detuneEnd?: number;
+}
+
+interface NoiseOptions {
+    duration?: number;
+    gain?: number;
+    bus?: AudioBus;
+    when?: number;
+    attack?: number;
+    filterFrequency?: number;
+    filterQ?: number;
+}
+
+interface AmbientNodes {
+    oscA: OscillatorNode;
+    oscB: OscillatorNode;
+    lfo: OscillatorNode;
+    lfoGain: GainNode;
+    filter: BiquadFilterNode;
+    gain: GainNode;
 }
 
 interface WeaponEventData {
@@ -18,26 +49,11 @@ interface WeaponEventData {
     };
 }
 
-interface EnemyEventData {
+interface EnemyKilledEventData {
     type?: string;
 }
 
-interface PlayerLevelupEventData {
-    level?: number;
-}
-
-interface SfxDefinition {
-    path: string;
-    bus: AudioBus;
-    volume: number;
-    maxVoices: number;
-}
-
-interface PlaySfxOptions {
-    throttleMs?: number;
-    volumeScale?: number;
-    playbackRate?: number;
-}
+const MIN_GAIN = 0.0001;
 
 function clamp01(value: number) {
     if (value < 0) return 0;
@@ -45,180 +61,47 @@ function clamp01(value: number) {
     return value;
 }
 
-function randomChoice<T>(items: T[]) {
-    if (items.length === 0) return null;
-    const index = Math.floor(Math.random() * items.length);
-    return items[index];
-}
-
-export class AudioSystem {
-    ambientTracks: Record<AmbientTrackKey, HTMLAudioElement | null>;
-    sfxDefs: Record<string, SfxDefinition>;
-    sfxPools: Map<string, HTMLAudioElement[]>;
+export class ProceduralAudioSystem {
+    context: AudioContext | null;
+    masterGain: GainNode | null;
+    musicGain: GainNode | null;
+    sfxGain: GainNode | null;
+    uiGain: GainNode | null;
+    ambient: AmbientNodes | null;
     unsubscribers: Array<() => void>;
-    lastPlayMs: Map<string, number>;
     unlocked: boolean;
     enabled: boolean;
-    prepared: boolean;
-    gameplayActive: boolean;
-    activeAmbient: AmbientTrackKey | null;
+    lastPlayMs: Map<string, number>;
     volumes: {
         master: number;
         music: number;
         sfx: number;
-        ui: number;
     };
 
     constructor(settings: AudioSettings = {}) {
-        this.ambientTracks = {
-            menu: null,
-            dungeon: null,
-            spring: null,
-            death: null
-        };
-        this.sfxDefs = this._createSfxDefinitions();
-        this.sfxPools = new Map();
+        this.context = null;
+        this.masterGain = null;
+        this.musicGain = null;
+        this.sfxGain = null;
+        this.uiGain = null;
+        this.ambient = null;
         this.unsubscribers = [];
-        this.lastPlayMs = new Map();
         this.unlocked = false;
         this.enabled = true;
-        this.prepared = false;
-        this.gameplayActive = false;
-        this.activeAmbient = null;
+        this.lastPlayMs = new Map();
         this.volumes = {
             master: clamp01(settings.masterVolume ?? 0.8),
             music: clamp01(settings.musicVolume ?? 0.35),
-            sfx: clamp01(settings.sfxVolume ?? 0.85),
-            ui: clamp01((settings.sfxVolume ?? 0.85) * 0.75)
+            sfx: clamp01(settings.sfxVolume ?? 0.8)
         };
 
         this._bindEvents();
     }
 
-    _createSfxDefinitions() {
-        return {
-            click_ui: {
-                path: '/Sounds/SFX/click_ui.wav',
-                bus: 'ui',
-                volume: 0.5,
-                maxVoices: 3
-            },
-            menu_select: {
-                path: '/Sounds/SFX/menu_select.wav',
-                bus: 'ui',
-                volume: 0.55,
-                maxVoices: 3
-            },
-            hint_sound: {
-                path: '/Sounds/SFX/hint_sound.wav',
-                bus: 'ui',
-                volume: 0.42,
-                maxVoices: 3
-            },
-            start_game: {
-                path: '/Sounds/SFX/start_game.wav',
-                bus: 'ui',
-                volume: 0.6,
-                maxVoices: 2
-            },
-            gem_collect: {
-                path: '/Sounds/SFX/gem_collect.wav',
-                bus: 'sfx',
-                volume: 0.5,
-                maxVoices: 6
-            },
-            level_up: {
-                path: '/Sounds/SFX/level_up.wav',
-                bus: 'ui',
-                volume: 0.65,
-                maxVoices: 2
-            },
-            orb_hum: {
-                path: '/Sounds/SFX/orb_hum.wav',
-                bus: 'sfx',
-                volume: 0.38,
-                maxVoices: 3
-            },
-            knife_slash: {
-                path: '/Sounds/SFX/knife_slash.wav',
-                bus: 'sfx',
-                volume: 0.6,
-                maxVoices: 6
-            },
-            sword_slice: {
-                path: '/Sounds/SFX/sword_slice.wav',
-                bus: 'sfx',
-                volume: 0.62,
-                maxVoices: 6
-            },
-            sword_thunder: {
-                path: '/Sounds/SFX/sword_thunder.wav',
-                bus: 'sfx',
-                volume: 0.67,
-                maxVoices: 4
-            },
-            thunderclap: {
-                path: '/Sounds/SFX/thunderclap.wav',
-                bus: 'sfx',
-                volume: 0.45,
-                maxVoices: 2
-            },
-            zombie_death: {
-                path: '/Sounds/SFX/zombie_death.wav',
-                bus: 'sfx',
-                volume: 0.58,
-                maxVoices: 6
-            },
-            zombie_wounded: {
-                path: '/Sounds/SFX/zombie_wounded.wav',
-                bus: 'sfx',
-                volume: 0.35,
-                maxVoices: 4
-            },
-            player_hurt1: {
-                path: '/Sounds/SFX/player_hurt1.wav',
-                bus: 'sfx',
-                volume: 0.62,
-                maxVoices: 2
-            },
-            player_hurt2: {
-                path: '/Sounds/SFX/player_hurt2.wav',
-                bus: 'sfx',
-                volume: 0.62,
-                maxVoices: 2
-            },
-            player_death: {
-                path: '/Sounds/SFX/player_death.wav',
-                bus: 'sfx',
-                volume: 0.8,
-                maxVoices: 1
-            }
-        } as Record<string, SfxDefinition>;
-    }
-
     _bindEvents() {
         this.unsubscribers.push(
             eventBus.on(GameEvents.GAME_START, () => {
-                this.gameplayActive = true;
                 void this.unlock();
-                this._playSfx('start_game', { throttleMs: 300, playbackRate: 1 });
-                this.switchGameplayAmbient();
-            })
-        );
-
-        this.unsubscribers.push(
-            eventBus.on(GameEvents.GAME_RESTART, () => {
-                this.gameplayActive = true;
-                void this.unlock();
-                this._playSfx('start_game', { throttleMs: 300, playbackRate: 1.03 });
-                this.switchGameplayAmbient();
-            })
-        );
-
-        this.unsubscribers.push(
-            eventBus.on(GameEvents.GAME_OVER, () => {
-                this.gameplayActive = false;
-                this.switchAmbient('death');
             })
         );
 
@@ -229,44 +112,35 @@ export class AudioSystem {
         );
 
         this.unsubscribers.push(
+            eventBus.on(GameEvents.WEAPON_ACQUIRED, (data: WeaponEventData | undefined) => {
+                const name = (data?.weapon?.name || '').toLowerCase();
+                if (name.includes('orb')) {
+                    this.playOrbHumCue();
+                }
+            })
+        );
+
+        this.unsubscribers.push(
             eventBus.on(GameEvents.XP_COLLECTED, () => {
                 this.playXpCollect();
             })
         );
 
         this.unsubscribers.push(
-            eventBus.on(GameEvents.PLAYER_LEVELUP, (data: PlayerLevelupEventData | undefined) => {
+            eventBus.on(GameEvents.PLAYER_LEVELUP, () => {
                 this.playLevelUpFanfare();
-
-                const level = data?.level || 1;
-                // Every few levels, shift to the spring ambient variation.
-                if (level > 0 && level % 5 === 0) {
-                    this.switchAmbient('spring');
-                }
             })
         );
 
         this.unsubscribers.push(
-            eventBus.on(GameEvents.ENEMY_KILLED, (data: EnemyEventData | undefined) => {
+            eventBus.on(GameEvents.ENEMY_KILLED, (data: EnemyKilledEventData | undefined) => {
                 this.playEnemyDeath(data?.type || 'basic');
-            })
-        );
-
-        this.unsubscribers.push(
-            eventBus.on(GameEvents.ENEMY_DAMAGED, () => {
-                this.playEnemyWounded();
             })
         );
 
         this.unsubscribers.push(
             eventBus.on(GameEvents.PLAYER_DAMAGED, () => {
                 this.playPlayerDamaged();
-            })
-        );
-
-        this.unsubscribers.push(
-            eventBus.on(GameEvents.PLAYER_DIED, () => {
-                this._playSfx('player_death', { throttleMs: 200 });
             })
         );
 
@@ -289,39 +163,37 @@ export class AudioSystem {
         }
         this.unsubscribers = [];
 
-        for (const key of Object.keys(this.ambientTracks) as AmbientTrackKey[]) {
-            const ambient = this.ambientTracks[key];
-            if (!ambient) continue;
-            ambient.pause();
-            ambient.currentTime = 0;
+        this.stopAmbientDrone();
+        if (this.context) {
+            const ctx = this.context;
+            this.context = null;
+            void ctx.close();
         }
-        this.activeAmbient = null;
-
-        for (const pool of this.sfxPools.values()) {
-            for (const audio of pool) {
-                audio.pause();
-            }
-        }
-        this.sfxPools.clear();
     }
 
     async unlock() {
         if (!this.enabled) return false;
-        this._prepareAudio();
-        this.unlocked = true;
+        if (!this._ensureContext()) return false;
+        if (!this.context) return false;
 
-        const targetAmbient: AmbientTrackKey = this.gameplayActive ? this._pickGameplayAmbient() : 'menu';
-        this.switchAmbient(targetAmbient);
+        if (this.context.state === 'suspended') {
+            try {
+                await this.context.resume();
+            } catch {
+                return false;
+            }
+        }
+
+        this.unlocked = true;
+        this._applyVolumes();
+        this.startAmbientDrone();
         return true;
     }
 
     setEnabled(enabled: boolean) {
         this.enabled = enabled;
         if (!enabled) {
-            this._pauseAllAmbient();
-        } else if (this.unlocked) {
-            const targetAmbient: AmbientTrackKey = this.gameplayActive ? this._pickGameplayAmbient() : 'menu';
-            this.switchAmbient(targetAmbient);
+            this.stopAmbientDrone();
         }
     }
 
@@ -334,244 +206,452 @@ export class AudioSystem {
         }
         if (typeof settings.sfxVolume === 'number') {
             this.volumes.sfx = clamp01(settings.sfxVolume);
-            this.volumes.ui = clamp01(settings.sfxVolume * 0.75);
         }
-
-        // Refresh ambient volume immediately.
-        if (this.activeAmbient) {
-            const ambient = this.ambientTracks[this.activeAmbient];
-            if (ambient) {
-                ambient.volume = this._volumeForBus('music');
-            }
-        }
+        this._applyVolumes();
     }
 
-    _prepareAudio() {
-        if (this.prepared) return;
-        this.prepared = true;
+    _ensureContext() {
+        if (this.context) return true;
+        if (typeof window === 'undefined') return false;
 
-        const ambientPaths: Record<AmbientTrackKey, string> = {
-            menu: '/Sounds/Ambient/ui-background-ambient.wav',
-            dungeon: '/Sounds/Ambient/dungeon_ambient.wav',
-            spring: '/Sounds/Ambient/first_spring_ambient.wav',
-            death: '/Sounds/Ambient/river_of_death.wav'
-        };
+        const Ctor = window.AudioContext || (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!Ctor) return false;
 
-        for (const key of Object.keys(ambientPaths) as AmbientTrackKey[]) {
-            const audio = new Audio(this._resolveAssetPath(ambientPaths[key]));
-            audio.preload = 'auto';
-            audio.loop = true;
-            audio.volume = this._volumeForBus('music');
-            this.ambientTracks[key] = audio;
-        }
+        const ctx = new Ctor();
+        const master = ctx.createGain();
+        const music = ctx.createGain();
+        const sfx = ctx.createGain();
+        const ui = ctx.createGain();
 
-        for (const [key, def] of Object.entries(this.sfxDefs)) {
-            const audio = new Audio(this._resolveAssetPath(def.path));
-            audio.preload = 'auto';
-            audio.loop = false;
-            audio.volume = this._volumeForBus(def.bus) * def.volume;
-            this.sfxPools.set(key, [audio]);
-        }
+        music.connect(master);
+        sfx.connect(master);
+        ui.connect(master);
+        master.connect(ctx.destination);
+
+        this.context = ctx;
+        this.masterGain = master;
+        this.musicGain = music;
+        this.sfxGain = sfx;
+        this.uiGain = ui;
+        this._applyVolumes();
+        return true;
     }
 
-    _resolveAssetPath(path: string) {
-        const base = import.meta.env.BASE_URL || '/';
-        const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-        const normalizedPath = path.startsWith('/') ? path.slice(1) : path;
-        return `${normalizedBase}${normalizedPath}`;
+    _applyVolumes() {
+        if (!this.masterGain || !this.musicGain || !this.sfxGain || !this.uiGain) return;
+        this.masterGain.gain.value = this.volumes.master;
+        this.musicGain.gain.value = this.volumes.music;
+        this.sfxGain.gain.value = this.volumes.sfx;
+        this.uiGain.gain.value = Math.min(1, this.volumes.sfx * 0.75);
     }
 
-    _canPlay(key: string, throttleMs: number = 0) {
+    _canPlay(key: string, minIntervalMs: number = 0) {
         const now = performance.now();
         const last = this.lastPlayMs.get(key) || -Infinity;
-        if (now - last < throttleMs) return false;
+        if (now - last < minIntervalMs) return false;
         this.lastPlayMs.set(key, now);
         return true;
     }
 
-    _volumeForBus(bus: AudioBus) {
-        const busVolume = bus === 'music'
-            ? this.volumes.music
-            : bus === 'ui'
-                ? this.volumes.ui
-                : this.volumes.sfx;
-        return clamp01(this.volumes.master * busVolume);
+    _getBusGain(bus: AudioBus) {
+        if (!this.enabled || !this.unlocked) return null;
+        if (bus === 'music') return this.musicGain;
+        if (bus === 'ui') return this.uiGain;
+        return this.sfxGain;
     }
 
-    _pauseAllAmbient() {
-        for (const key of Object.keys(this.ambientTracks) as AmbientTrackKey[]) {
-            const ambient = this.ambientTracks[key];
-            if (!ambient) continue;
-            ambient.pause();
+    _playTone(options: ToneOptions) {
+        if (!this.context) return;
+        const bus = this._getBusGain(options.bus || 'sfx');
+        if (!bus) return;
+
+        const duration = Math.max(0.02, options.duration || 0.1);
+        const attack = Math.max(0.001, Math.min(duration * 0.4, options.attack || 0.006));
+        const gainAmount = Math.max(MIN_GAIN, options.gain || 0.05);
+        const when = this.context.currentTime + (options.when || 0);
+
+        const osc = this.context.createOscillator();
+        const gain = this.context.createGain();
+
+        osc.type = options.type || 'triangle';
+        osc.frequency.setValueAtTime(Math.max(1, options.frequency), when);
+        if (typeof options.frequencyEnd === 'number') {
+            osc.frequency.exponentialRampToValueAtTime(Math.max(1, options.frequencyEnd), when + duration);
         }
-        this.activeAmbient = null;
+
+        if (typeof options.detune === 'number') {
+            osc.detune.setValueAtTime(options.detune, when);
+        }
+        if (typeof options.detuneEnd === 'number') {
+            osc.detune.linearRampToValueAtTime(options.detuneEnd, when + duration);
+        }
+
+        gain.gain.setValueAtTime(MIN_GAIN, when);
+        gain.gain.exponentialRampToValueAtTime(gainAmount, when + attack);
+        gain.gain.exponentialRampToValueAtTime(MIN_GAIN, when + duration);
+
+        osc.connect(gain);
+        gain.connect(bus);
+
+        osc.start(when);
+        osc.stop(when + duration + 0.02);
+        osc.onended = () => {
+            osc.disconnect();
+            gain.disconnect();
+        };
     }
 
-    _pickGameplayAmbient() {
-        // Mostly dungeon ambient, with occasional spring variation.
-        return Math.random() < 0.25 ? 'spring' : 'dungeon';
+    _createNoiseBuffer(duration: number) {
+        if (!this.context) return null;
+        const length = Math.max(1, Math.floor(this.context.sampleRate * duration));
+        const buffer = this.context.createBuffer(1, length, this.context.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        let last = 0;
+        for (let i = 0; i < length; i++) {
+            const white = Math.random() * 2 - 1;
+            const smoothed = (last * 0.85) + (white * 0.15);
+            data[i] = smoothed;
+            last = smoothed;
+        }
+
+        return buffer;
     }
 
-    switchGameplayAmbient() {
-        this.switchAmbient(this._pickGameplayAmbient());
+    _playNoise(options: NoiseOptions = {}) {
+        if (!this.context) return;
+        const bus = this._getBusGain(options.bus || 'sfx');
+        if (!bus) return;
+
+        const duration = Math.max(0.02, options.duration || 0.12);
+        const attack = Math.max(0.001, Math.min(duration * 0.4, options.attack || 0.004));
+        const gainAmount = Math.max(MIN_GAIN, options.gain || 0.05);
+        const when = this.context.currentTime + (options.when || 0);
+
+        const source = this.context.createBufferSource();
+        source.buffer = this._createNoiseBuffer(duration);
+        if (!source.buffer) return;
+
+        const filter = this.context.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(Math.max(40, options.filterFrequency || 1200), when);
+        filter.Q.setValueAtTime(Math.max(0.1, options.filterQ || 0.7), when);
+
+        const gain = this.context.createGain();
+        gain.gain.setValueAtTime(MIN_GAIN, when);
+        gain.gain.exponentialRampToValueAtTime(gainAmount, when + attack);
+        gain.gain.exponentialRampToValueAtTime(MIN_GAIN, when + duration);
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(bus);
+
+        source.start(when);
+        source.stop(when + duration + 0.02);
+        source.onended = () => {
+            source.disconnect();
+            filter.disconnect();
+            gain.disconnect();
+        };
     }
 
-    switchAmbient(key: AmbientTrackKey) {
-        if (!this.enabled || !this.unlocked) return;
-        this._prepareAudio();
+    startAmbientDrone() {
+        if (!this.context || !this.musicGain || !this.unlocked || this.ambient) return;
 
-        const next = this.ambientTracks[key];
-        if (!next) return;
-        if (this.activeAmbient === key && !next.paused) return;
+        const ctx = this.context;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 300;
+        filter.Q.value = 0.75;
 
-        if (this.activeAmbient) {
-            const current = this.ambientTracks[this.activeAmbient];
-            if (current && current !== next) {
-                current.pause();
-                current.currentTime = 0;
+        const gain = ctx.createGain();
+        gain.gain.value = MIN_GAIN;
+
+        const oscA = ctx.createOscillator();
+        oscA.type = 'sawtooth';
+        oscA.frequency.value = 55;
+
+        const oscB = ctx.createOscillator();
+        oscB.type = 'triangle';
+        oscB.frequency.value = 82.41;
+        oscB.detune.value = -8;
+
+        const lfo = ctx.createOscillator();
+        lfo.type = 'sine';
+        lfo.frequency.value = 0.09;
+
+        const lfoGain = ctx.createGain();
+        lfoGain.gain.value = 110;
+
+        lfo.connect(lfoGain);
+        lfoGain.connect(filter.frequency);
+
+        oscA.connect(filter);
+        oscB.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.musicGain);
+
+        const now = ctx.currentTime;
+        gain.gain.setValueAtTime(MIN_GAIN, now);
+        gain.gain.exponentialRampToValueAtTime(0.08, now + 1.2);
+
+        oscA.start(now);
+        oscB.start(now);
+        lfo.start(now);
+
+        this.ambient = { oscA, oscB, lfo, lfoGain, filter, gain };
+    }
+
+    stopAmbientDrone() {
+        if (!this.ambient) return;
+        const { oscA, oscB, lfo, lfoGain, filter, gain } = this.ambient;
+
+        const safeStop = (node: OscillatorNode) => {
+            try {
+                node.stop();
+            } catch {
+                // no-op
             }
-        }
+        };
 
-        next.volume = this._volumeForBus('music');
-        const playPromise = next.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(() => {
-                // Browser autoplay/user gesture restrictions.
-            });
-        }
-        this.activeAmbient = key;
-    }
+        safeStop(oscA);
+        safeStop(oscB);
+        safeStop(lfo);
 
-    _borrowSfxVoice(key: string) {
-        const def = this.sfxDefs[key];
-        const pool = this.sfxPools.get(key);
-        if (!def || !pool) return null;
-
-        for (const voice of pool) {
-            if (voice.paused || voice.ended) {
-                return voice;
-            }
-        }
-
-        if (pool.length >= def.maxVoices) {
-            return pool[0];
-        }
-
-        const clone = new Audio(this._resolveAssetPath(def.path));
-        clone.preload = 'auto';
-        clone.loop = false;
-        pool.push(clone);
-        return clone;
-    }
-
-    _playSfx(key: string, options: PlaySfxOptions = {}) {
-        if (!this.enabled || !this.unlocked) return;
-        const def = this.sfxDefs[key];
-        if (!def) return;
-
-        const throttleMs = options.throttleMs || 0;
-        if (!this._canPlay(`sfx_${key}`, throttleMs)) return;
-
-        this._prepareAudio();
-        const voice = this._borrowSfxVoice(key);
-        if (!voice) return;
-
-        const volumeScale = options.volumeScale ?? 1;
-        voice.volume = clamp01(this._volumeForBus(def.bus) * def.volume * volumeScale);
-        voice.playbackRate = options.playbackRate || 1;
-        voice.currentTime = 0;
-
-        const playPromise = voice.play();
-        if (playPromise && typeof playPromise.catch === 'function') {
-            playPromise.catch(() => {
-                // Ignore interrupted or blocked playback attempts.
-            });
-        }
+        oscA.disconnect();
+        oscB.disconnect();
+        lfo.disconnect();
+        lfoGain.disconnect();
+        filter.disconnect();
+        gain.disconnect();
+        this.ambient = null;
     }
 
     playUiSelect() {
-        this._playSfx('menu_select', { throttleMs: 20 });
+        if (!this._canPlay('ui_select', 20)) return;
+        this._playTone({
+            frequency: 720,
+            frequencyEnd: 980,
+            duration: 0.06,
+            gain: 0.05,
+            type: 'square',
+            bus: 'ui'
+        });
     }
 
     playUiPause() {
-        this._playSfx('click_ui', { throttleMs: 40, playbackRate: 0.95 });
+        if (!this._canPlay('ui_pause', 60)) return;
+        this._playTone({
+            frequency: 430,
+            frequencyEnd: 290,
+            duration: 0.08,
+            gain: 0.045,
+            type: 'square',
+            bus: 'ui'
+        });
     }
 
     playUiResume() {
-        this._playSfx('click_ui', { throttleMs: 40, playbackRate: 1.04 });
+        if (!this._canPlay('ui_resume', 60)) return;
+        this._playTone({
+            frequency: 330,
+            frequencyEnd: 520,
+            duration: 0.07,
+            gain: 0.04,
+            type: 'triangle',
+            bus: 'ui'
+        });
     }
 
     playWeaponImpact(weaponName: string) {
         const name = weaponName.toLowerCase();
+        if (!this._canPlay(`weapon_${name}`, 30)) return;
 
         if (name.includes('lightning')) {
-            this._playSfx('sword_thunder', { throttleMs: 120 });
-            if (Math.random() < 0.35) {
-                this._playSfx('thunderclap', { throttleMs: 500, volumeScale: 0.8 });
-            }
-            return;
-        }
-
-        if (name.includes('longsword')) {
-            this._playSfx('knife_slash', { throttleMs: 50, playbackRate: 0.98 });
+            this._playNoise({
+                duration: 0.16,
+                gain: 0.1,
+                filterFrequency: 3000,
+                filterQ: 1.1
+            });
+            this._playTone({
+                frequency: 940,
+                frequencyEnd: 170,
+                duration: 0.13,
+                gain: 0.07,
+                type: 'square'
+            });
             return;
         }
 
         if (name.includes('sword')) {
-            this._playSfx('sword_slice', { throttleMs: 45, playbackRate: 1 + Math.random() * 0.06 });
-            return;
-        }
-
-        if (name.includes('orb')) {
-            this._playSfx('orb_hum', { throttleMs: 180, volumeScale: 0.85 });
+            this._playNoise({
+                duration: 0.09,
+                gain: 0.07,
+                filterFrequency: 1900,
+                filterQ: 1.3
+            });
+            this._playTone({
+                frequency: 260,
+                frequencyEnd: 110,
+                duration: 0.1,
+                gain: 0.055,
+                type: 'sawtooth'
+            });
             return;
         }
 
         if (name.includes('missile')) {
-            this._playSfx('hint_sound', { throttleMs: 60, playbackRate: 1.1, volumeScale: 0.75 });
+            this._playTone({
+                frequency: 390,
+                frequencyEnd: 820,
+                duration: 0.11,
+                gain: 0.05,
+                type: 'triangle'
+            });
             return;
         }
 
-        this._playSfx('click_ui', { throttleMs: 45, volumeScale: 0.7 });
+        if (name.includes('orb')) {
+            this.playOrbHumCue();
+            return;
+        }
+
+        this._playTone({
+            frequency: 480,
+            frequencyEnd: 360,
+            duration: 0.08,
+            gain: 0.045,
+            type: 'triangle'
+        });
+    }
+
+    playOrbHumCue() {
+        if (!this._canPlay('orb_hum', 200)) return;
+        this._playTone({
+            frequency: 170,
+            frequencyEnd: 230,
+            duration: 0.22,
+            gain: 0.04,
+            type: 'sine'
+        });
     }
 
     playXpCollect() {
-        this._playSfx('gem_collect', {
-            throttleMs: 28,
-            playbackRate: 0.96 + Math.random() * 0.12,
-            volumeScale: 0.9
+        if (!this._canPlay('xp_collect', 25)) return;
+        const pitch = 840 + Math.random() * 180;
+        this._playTone({
+            frequency: pitch,
+            frequencyEnd: pitch * 1.2,
+            duration: 0.07,
+            gain: 0.038,
+            type: 'triangle'
         });
     }
 
     playLevelUpFanfare() {
-        this._playSfx('level_up', { throttleMs: 220 });
-    }
+        if (!this._canPlay('level_up', 250)) return;
 
-    playEnemyDeath(enemyType: string) {
-        const type = enemyType.toLowerCase();
-        let rate = 1;
-        if (type === 'slime') rate = 1.2;
-        else if (type === 'tank') rate = 0.86;
-        else if (type === 'elite') rate = 0.82;
-        else if (type === 'skeleton') rate = 1.03;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        for (let i = 0; i < notes.length; i++) {
+            this._playTone({
+                frequency: notes[i],
+                duration: i === notes.length - 1 ? 0.22 : 0.12,
+                gain: i === notes.length - 1 ? 0.09 : 0.065,
+                type: i % 2 === 0 ? 'square' : 'triangle',
+                bus: 'ui',
+                when: i * 0.085
+            });
+        }
 
-        this._playSfx('zombie_death', {
-            throttleMs: 22,
-            playbackRate: rate,
-            volumeScale: type === 'elite' ? 1.15 : 1
+        this._playNoise({
+            duration: 0.12,
+            gain: 0.04,
+            filterFrequency: 2400,
+            bus: 'ui',
+            when: 0.16
         });
     }
 
-    playEnemyWounded() {
-        this._playSfx('zombie_wounded', {
-            throttleMs: 80,
-            playbackRate: 0.95 + Math.random() * 0.12,
-            volumeScale: 0.8
+    playEnemyDeath(enemyType: string) {
+        if (!this._canPlay(`enemy_death_${enemyType}`, 20)) return;
+
+        const type = enemyType.toLowerCase();
+        if (type === 'slime') {
+            this._playTone({
+                frequency: 210,
+                frequencyEnd: 95,
+                duration: 0.12,
+                gain: 0.05,
+                type: 'sine'
+            });
+            this._playNoise({
+                duration: 0.07,
+                gain: 0.03,
+                filterFrequency: 450
+            });
+            return;
+        }
+
+        if (type === 'skeleton') {
+            this._playTone({
+                frequency: 760,
+                frequencyEnd: 420,
+                duration: 0.07,
+                gain: 0.05,
+                type: 'square'
+            });
+            this._playTone({
+                frequency: 520,
+                frequencyEnd: 280,
+                duration: 0.06,
+                gain: 0.035,
+                type: 'square',
+                when: 0.03
+            });
+            return;
+        }
+
+        if (type === 'tank' || type === 'elite') {
+            this._playNoise({
+                duration: 0.11,
+                gain: 0.07,
+                filterFrequency: 700,
+                filterQ: 0.8
+            });
+            this._playTone({
+                frequency: 180,
+                frequencyEnd: 80,
+                duration: 0.15,
+                gain: 0.06,
+                type: 'sawtooth'
+            });
+            return;
+        }
+
+        this._playTone({
+            frequency: 340,
+            frequencyEnd: 140,
+            duration: 0.09,
+            gain: 0.045,
+            type: 'triangle'
         });
     }
 
     playPlayerDamaged() {
-        const key = randomChoice(['player_hurt1', 'player_hurt2']) || 'player_hurt1';
-        this._playSfx(key, { throttleMs: 100, playbackRate: 0.96 + Math.random() * 0.08 });
+        if (!this._canPlay('player_damaged', 80)) return;
+        this._playNoise({
+            duration: 0.08,
+            gain: 0.06,
+            filterFrequency: 650,
+            filterQ: 0.9
+        });
+        this._playTone({
+            frequency: 180,
+            frequencyEnd: 120,
+            duration: 0.09,
+            gain: 0.055,
+            type: 'sawtooth'
+        });
     }
 }

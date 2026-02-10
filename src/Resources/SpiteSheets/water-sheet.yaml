@@ -27,7 +27,7 @@ meta:
 tiles:
 - id: 0
   name: pond_corner_northwest
-  atlas_x: 0
+  atlas_x: 16
   atlas_y: 0
   -connects_to:
   - pond_edge_west
@@ -62,7 +62,7 @@ tiles:
 
 - id: 1
   name: pond_edge_north
-  atlas_x: 16
+  atlas_x: 32
   atlas_y: 0
   tile_size: 16
   -connects_to:
@@ -98,7 +98,7 @@ tiles:
 
 - id: 2
   name: pond_corner_northeast
-  atlas_x: 32
+  atlas_x: 48
   atlas_y: 0
   -connects_to:
   - pond_edge_north
@@ -133,7 +133,7 @@ tiles:
 
 - id: 3
   name: pond_edge_east
-  atlas_x: 32
+  atlas_x: 48
   atlas_y: 16
   -connects_to:
   - pond_corner_northeast
@@ -169,7 +169,7 @@ tiles:
 
 - id: 4
   name: pond_corner_southeast
-  atlas_x: 32
+  atlas_x: 48
   atlas_y: 32
   -connects_to:
   - pond_edge_east
@@ -204,7 +204,7 @@ tiles:
 
 - id: 5
   name: pond_edge_south
-  atlas_x: 16
+  atlas_x: 32
   atlas_y: 32
   -connects_to:
   - pond_corner_southeast
@@ -240,7 +240,7 @@ tiles:
 
 - id: 6
   name: pond_corner_southwest
-  atlas_x: 0
+  atlas_x: 16
   atlas_y: 32
   -connects_to:
   - pond_edge_south
@@ -275,7 +275,7 @@ tiles:
 
 - id: 7
   name: pond_edge_west
-  atlas_x: 0
+  atlas_x: 16
   atlas_y: 16
   -connects_to:
   - pond_corner_southwest
@@ -308,14 +308,15 @@ tiles:
   concealment: 0.5
   editor_color: "#2196F3"
   editor_icon: pond_corner_northwest
+
   ## Water cornerns that can make up an island
 - id: 8
   name: water_island_corner_northwest
-  atlas_x: 48
+  atlas_x: 64
   atlas_y: 0
   -connects_to:
-  - pond_edge_south
-  - pond_edge_east
+  - water_island_corner_southeast
+  - water_island_corner_northeast
   tile_size: 16
   layer: ground
   category: water
@@ -343,14 +344,14 @@ tiles:
   concealment: 0.5
   editor_color: "#2196F3"
   editor_icon: water_island_corner_northwest
+
 - id: 9
   name: water_island_edge_northeast
-  atlas_x: 64
+  atlas_x: 80
   atlas_y: 0
   -connects_to:
-  - pond_edge_south
-  - pond_edge_south
-  - pond_edge_north
+  - water_island_corner_southeast
+  - water_island_corner_northwest
   tile_size: 16
   layer: ground
   category: water
@@ -378,12 +379,14 @@ tiles:
   concealment: 0.5
   editor_color: "#2196F3"
   editor_icon: water_island_edge_northwest
+
 - id: 10
   name: water_island_corner_southwest
-  atlas_x: 48
+  atlas_x: 64
   atlas_y: 16
   -connects_to:
-  - pond_edge_north
+  - water_island_corner_northwest
+  - water_island_corner_southeast
   - pond_edge_east
   tile_size: 16
   layer: ground
@@ -414,12 +417,12 @@ tiles:
   editor_icon: water_island_corner_southwest
 
 - id: 11
-  name: water_island_edge_southwest
-  atlas_x: 64
+  name: water_island_corner_southeast
+  atlas_x: 80
   atlas_y: 16
   -connects_to:
-  - pond_edge_north
-  - pond_edge_west
+  - water_island_corner_northwest
+  - water_island_corner_northeast
   tile_size: 16
   layer: ground
   category: water
@@ -446,11 +449,11 @@ tiles:
   provides_cover: false
   concealment: 0.5
   editor_color: "#2196F3"
-  editor_icon: water_island_edge_southwest
+  editor_icon: water_island_corner_southeast
 
 - id: 12
   name: pond_fill
-  atlas_x: 16
+  atlas_x: 32
   atlas_y: 16
   tile_size: 16
   layer: ground
@@ -466,6 +469,12 @@ tiles:
   contains_transparency: false
   alpha_mode: alpha_blend
   casts_shadow: false
+  connects_to:
+  - pond_edge_north
+  - pond_edge_east
+  - pond_edge_south
+  - pond_edge_west
+  - pond_fill
   receives_shadow: true
   z_bias: 0
   interactable: false
