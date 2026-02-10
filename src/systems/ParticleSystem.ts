@@ -1,5 +1,4 @@
-// File: src/systems/ParticleSystem.js
-// Particle effects system
+// File: src/systems/ParticleSystem.ts
 
 import { MathUtils } from '../core/Math';
 import type { Direction } from '../core/Math';
@@ -501,4 +500,3 @@ export class ParticleSystem {
         return this.particles.length + this.damageNumbers.length;
     }
 }
-

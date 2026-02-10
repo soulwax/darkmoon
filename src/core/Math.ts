@@ -1,5 +1,4 @@
-// File: src/core/Math.js
-// Vector2 and math utilities
+// File: src/core/Math.ts
 
 export type Direction = 'up' | 'down' | 'left' | 'right';
 

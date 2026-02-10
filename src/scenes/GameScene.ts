@@ -1,5 +1,4 @@
-// File: src/scenes/GameScene.js
-// Main gameplay scene
+// File: src/scenes/GameScene.ts
 
 import { Scene } from './Scene';
 import { Player } from '../entities/Player';
@@ -19,6 +18,28 @@ import type { GameConfig } from '../config/GameConfig';
 import type { AssetLoader } from '../assets/AssetLoader';
 import type { SpriteSheet } from '../assets/SpriteSheet';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
+import type { ColliderComponent } from '../ecs/components/ColliderComponent';
+
+interface WorldChest {
+    tileX: number;
+    tileY: number;
+    worldX: number;
+    worldY: number;
+    closedTileId: number;
+    openTileId: number;
+    opened: boolean;
+    baseXpValue: number;
+    powerUpChance: number;
+}
+
+interface TileCollisionEntity {
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    getComponent<T = unknown>(componentClass: string): T | null;
+    [key: string]: unknown;
+}
 
 export class GameScene extends Scene {
     config: GameConfig;
@@ -35,6 +56,9 @@ export class GameScene extends Scene {
     showingLevelUp: boolean;
     gameTime: number;
     killCount: number;
+    worldChests: WorldChest[];
+    nearestChest: WorldChest | null;
+    chestInteractRange: number;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -56,6 +80,9 @@ export class GameScene extends Scene {
         // Game state
         this.gameTime = 0;
         this.killCount = 0;
+        this.worldChests = [];
+        this.nearestChest = null;
+        this.chestInteractRange = 36;
 
         this._setupEventListeners();
     }
@@ -113,7 +140,8 @@ export class GameScene extends Scene {
             eventBus.emit(GameEvents.GAME_OVER, {
                 time: this.gameTime,
                 kills: this.killCount,
-                level: this.player?.level || 1
+                level: this.player?.level || 1,
+                message: 'You were overwhelmed. Rise again?'
             });
         });
     }
@@ -179,14 +207,17 @@ export class GameScene extends Scene {
         this.gameTime = 0;
         this.killCount = 0;
         this.showingLevelUp = false;
+        this.nearestChest = null;
     }
 
     onExit() {
         super.onExit();
 
         // Cleanup
-        this.spawnSystem?.clear();
+        this.spawnSystem?.destroy();
         this.particleSystem?.clear();
+        this.worldChests = [];
+        this.nearestChest = null;
     }
 
     _generateWorld() {
@@ -195,6 +226,7 @@ export class GameScene extends Scene {
         const height = this.config.world.worldHeightTiles;
 
         this.tileMap.init(width, height);
+        this.worldChests = [];
 
         // --- Sprite sheets ---
         const sheets: Record<string, SpriteSheet | null> = {
@@ -205,7 +237,9 @@ export class GameScene extends Scene {
             flowers: this.assetLoader?.getSpriteSheet?.('flowers') || null,
             shrooms: this.assetLoader?.getSpriteSheet?.('shrooms') || null,
             objects: this.assetLoader?.getSpriteSheet?.('objects') || null,
-            rockInWater: this.assetLoader?.getSpriteSheet?.('rockInWater') || null
+            rockInWater: this.assetLoader?.getSpriteSheet?.('rockInWater') || null,
+            chest01: this.assetLoader?.getSpriteSheet?.('chest01') || null,
+            chest02: this.assetLoader?.getSpriteSheet?.('chest02') || null
         };
 
         for (const [name, sheet] of Object.entries(sheets)) {
@@ -244,7 +278,16 @@ export class GameScene extends Scene {
             rock2: 101,
             rock3: 102,
 
-            rockInWater: 110
+            rockInWater: 110,
+
+            chest01BigClosed: 120,
+            chest01SmallClosed: 121,
+            chest01BigOpen: 122,
+            chest01SmallOpen: 123,
+            chest02BigClosed: 124,
+            chest02SmallClosed: 125,
+            chest02BigOpen: 126,
+            chest02SmallOpen: 127
         };
 
         // --- Ground (always) ---
@@ -303,6 +346,20 @@ export class GameScene extends Scene {
 
         if (sheets.rockInWater) {
             this.tileMap.defineTileType(D.rockInWater, { spriteSheet: 'rockInWater', tileId: 0, walkable: false });
+        }
+
+        if (sheets.chest01) {
+            this.tileMap.defineTileType(D.chest01BigClosed, { spriteSheet: 'chest01', tileId: 0, walkable: false });
+            this.tileMap.defineTileType(D.chest01SmallClosed, { spriteSheet: 'chest01', tileId: 1, walkable: false });
+            this.tileMap.defineTileType(D.chest01BigOpen, { spriteSheet: 'chest01', tileId: 2, walkable: false });
+            this.tileMap.defineTileType(D.chest01SmallOpen, { spriteSheet: 'chest01', tileId: 3, walkable: false });
+        }
+
+        if (sheets.chest02) {
+            this.tileMap.defineTileType(D.chest02BigClosed, { spriteSheet: 'chest02', tileId: 0, walkable: false });
+            this.tileMap.defineTileType(D.chest02SmallClosed, { spriteSheet: 'chest02', tileId: 1, walkable: false });
+            this.tileMap.defineTileType(D.chest02BigOpen, { spriteSheet: 'chest02', tileId: 2, walkable: false });
+            this.tileMap.defineTileType(D.chest02SmallOpen, { spriteSheet: 'chest02', tileId: 3, walkable: false });
         }
 
         // --- Procedural placement ---
@@ -428,6 +485,56 @@ export class GameScene extends Scene {
                 }
             }
         }
+
+        // Place interactable chests after base decoration.
+        const chestVariants: Array<{ closedTileId: number; openTileId: number; baseXpValue: number; powerUpChance: number }> = [];
+        if (sheets.chest01) {
+            chestVariants.push(
+                { closedTileId: D.chest01BigClosed, openTileId: D.chest01BigOpen, baseXpValue: 9, powerUpChance: 0.28 },
+                { closedTileId: D.chest01SmallClosed, openTileId: D.chest01SmallOpen, baseXpValue: 6, powerUpChance: 0.18 }
+            );
+        }
+        if (sheets.chest02) {
+            chestVariants.push(
+                { closedTileId: D.chest02BigClosed, openTileId: D.chest02BigOpen, baseXpValue: 10, powerUpChance: 0.32 },
+                { closedTileId: D.chest02SmallClosed, openTileId: D.chest02SmallOpen, baseXpValue: 7, powerUpChance: 0.2 }
+            );
+        }
+
+        const canPlaceChest = (x: number, y: number) => {
+            if (x < 2 || y < 2 || x >= width - 2 || y >= height - 2) return false;
+            if (Math.abs(x - centerX) <= safeRadius + 1 && Math.abs(y - centerY) <= safeRadius + 1) return false;
+            if (this.tileMap.getTile('decoration', x, y) !== 0) return false;
+            return this.tileMap.isWalkable(x, y);
+        };
+
+        if (chestVariants.length > 0) {
+            const desiredChests = 10;
+            const maxAttempts = desiredChests * 40;
+            let placed = 0;
+
+            for (let attempt = 0; attempt < maxAttempts && placed < desiredChests; attempt++) {
+                const x = randInt(2, width - 3);
+                const y = randInt(2, height - 3);
+                if (!canPlaceChest(x, y)) continue;
+
+                const variant = chestVariants[randInt(0, chestVariants.length - 1)];
+                this.tileMap.setTile('decoration', x, y, variant.closedTileId);
+
+                this.worldChests.push({
+                    tileX: x,
+                    tileY: y,
+                    worldX: x * this.tileMap.tileSize + this.tileMap.tileSize / 2,
+                    worldY: y * this.tileMap.tileSize + this.tileMap.tileSize / 2,
+                    closedTileId: variant.closedTileId,
+                    openTileId: variant.openTileId,
+                    opened: false,
+                    baseXpValue: variant.baseXpValue + randInt(0, 4),
+                    powerUpChance: variant.powerUpChance
+                });
+                placed++;
+            }
+        }
     }
 
     _showLevelUpScreen() {
@@ -440,6 +547,163 @@ export class GameScene extends Scene {
             this.showingLevelUp = false;
             this.game.resume();
         });
+    }
+
+    _getNearestClosedChest(maxDistance: number) {
+        if (!this.player || this.worldChests.length === 0) return null;
+
+        let nearest: WorldChest | null = null;
+        let nearestDistanceSq = maxDistance * maxDistance;
+
+        for (const chest of this.worldChests) {
+            if (chest.opened) continue;
+
+            const dx = chest.worldX - this.player.x;
+            const dy = chest.worldY - this.player.y;
+            const distanceSq = dx * dx + dy * dy;
+            if (distanceSq <= nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                nearest = chest;
+            }
+        }
+
+        return nearest;
+    }
+
+    _openChest(chest: WorldChest) {
+        if (chest.opened) return;
+
+        chest.opened = true;
+        this.tileMap.setTile('decoration', chest.tileX, chest.tileY, chest.openTileId);
+
+        let totalXp = 0;
+        const gemCount = 3 + Math.floor(Math.random() * 3);
+        for (let i = 0; i < gemCount; i++) {
+            const value = chest.baseXpValue + Math.floor(Math.random() * 4);
+            totalXp += value;
+            this.spawnSystem.spawnXPGem(chest.worldX, chest.worldY, value);
+        }
+
+        if (Math.random() < chest.powerUpChance) {
+            this.spawnSystem.spawnPowerUp(chest.worldX, chest.worldY);
+        }
+
+        this.particleSystem.createHitEffect(chest.worldX, chest.worldY, '#ffd27a');
+        this.particleSystem.createDamageNumber(chest.worldX, chest.worldY - 4, totalXp, '#ffd27a');
+        this.camera.shake(2.5, 0.12);
+    }
+
+    _circleIntersectsTile(
+        centerX: number,
+        centerY: number,
+        radius: number,
+        tileX: number,
+        tileY: number
+    ) {
+        const tileSize = this.tileMap.tileSize;
+        const rectX = tileX * tileSize;
+        const rectY = tileY * tileSize;
+
+        const closestX = Math.max(rectX, Math.min(centerX, rectX + tileSize));
+        const closestY = Math.max(rectY, Math.min(centerY, rectY + tileSize));
+
+        const dx = centerX - closestX;
+        const dy = centerY - closestY;
+        return dx * dx + dy * dy < radius * radius;
+    }
+
+    _circleIntersectsBlockedTiles(centerX: number, centerY: number, radius: number) {
+        const tileSize = this.tileMap.tileSize;
+        const startX = Math.floor((centerX - radius) / tileSize);
+        const endX = Math.floor((centerX + radius) / tileSize);
+        const startY = Math.floor((centerY - radius) / tileSize);
+        const endY = Math.floor((centerY + radius) / tileSize);
+
+        for (let y = startY; y <= endY; y++) {
+            for (let x = startX; x <= endX; x++) {
+                if (this.tileMap.isWalkable(x, y)) continue;
+                if (this._circleIntersectsTile(centerX, centerY, radius, x, y)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    _setAxisVelocityZero(entity: TileCollisionEntity, axis: 'x' | 'y') {
+        if (axis === 'x') {
+            entity.vx = 0;
+            if (typeof entity.knockbackVx === 'number') {
+                entity.knockbackVx = 0;
+            }
+        } else {
+            entity.vy = 0;
+            if (typeof entity.knockbackVy === 'number') {
+                entity.knockbackVy = 0;
+            }
+        }
+
+        const movement = entity.getComponent<{ vx: number; vy: number }>('MovementComponent');
+        if (!movement) return;
+        if (axis === 'x') {
+            movement.vx = 0;
+        } else {
+            movement.vy = 0;
+        }
+    }
+
+    _resolveEntityTileCollision(entity: TileCollisionEntity, previousX: number, previousY: number) {
+        const collider = entity.getComponent<ColliderComponent>('ColliderComponent');
+        const offsetX = collider?.offsetX || 0;
+        const offsetY = collider?.offsetY || 0;
+        const radius = Math.max(
+            4,
+            (collider?.type === 'circle' ? collider.radius : this.tileMap.tileSize * 0.45) - 2
+        );
+
+        const targetX = entity.x;
+        const targetY = entity.y;
+
+        entity.x = targetX;
+        if (this._circleIntersectsBlockedTiles(entity.x + offsetX, previousY + offsetY, radius)) {
+            entity.x = previousX;
+            this._setAxisVelocityZero(entity, 'x');
+        }
+
+        entity.y = targetY;
+        if (this._circleIntersectsBlockedTiles(entity.x + offsetX, entity.y + offsetY, radius)) {
+            entity.y = previousY;
+            this._setAxisVelocityZero(entity, 'y');
+        }
+    }
+
+    _drawChestPrompt(ctx: CanvasRenderingContext2D) {
+        const chest = this.nearestChest;
+        if (!chest || chest.opened) return;
+
+        const label = 'E OPEN';
+        const promptY = chest.worldY - this.tileMap.tileSize;
+
+        ctx.save();
+        ctx.font = 'bold 11px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        const boxWidth = ctx.measureText(label).width + 12;
+        const boxHeight = 15;
+        const boxX = chest.worldX - boxWidth / 2;
+        const boxY = promptY - boxHeight;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+        ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+        ctx.strokeStyle = 'rgba(255, 210, 122, 0.9)';
+        ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth - 1, boxHeight - 1);
+
+        ctx.fillStyle = '#ffd27a';
+        ctx.fillText(label, chest.worldX, boxY + boxHeight - 3);
+
+        ctx.restore();
     }
 
     update(deltaTime: number) {
@@ -466,14 +730,34 @@ export class GameScene extends Scene {
         }
 
         // Update player
+        const playerPreviousX = this.player.x;
+        const playerPreviousY = this.player.y;
         this.player.handleInput(this.inputManager);
         this.player.update(deltaTime);
+        this._resolveEntityTileCollision(this.player, playerPreviousX, playerPreviousY);
 
         // Update spawn system (enemies and XP gems)
+        const enemyPreviousPositions = new Map<number, { x: number; y: number }>();
+        for (const enemy of this.spawnSystem.getEnemies()) {
+            enemyPreviousPositions.set(enemy.id, { x: enemy.x, y: enemy.y });
+        }
         this.spawnSystem.update(deltaTime);
 
-        // Check player-enemy collisions
         const enemies = this.spawnSystem.getEnemies();
+        for (const enemy of enemies) {
+            const previous = enemyPreviousPositions.get(enemy.id);
+            if (previous) {
+                this._resolveEntityTileCollision(enemy, previous.x, previous.y);
+            }
+        }
+
+        this.nearestChest = this._getNearestClosedChest(this.chestInteractRange);
+        if (this.nearestChest && this.inputManager.isActionPressed('interact')) {
+            this._openChest(this.nearestChest);
+            this.nearestChest = null;
+        }
+
+        // Check player-enemy collisions
         for (const enemy of enemies) {
             if (enemy.checkCollision(this.player)) {
                 const health = this.player.getComponent<HealthComponent>('HealthComponent');
@@ -505,22 +789,8 @@ export class GameScene extends Scene {
     }
 
     draw(ctx: CanvasRenderingContext2D, alpha: number) {
-        // Debug: Draw a test rectangle before camera transform to verify canvas works
-        ctx.fillStyle = '#ff0000';
-        ctx.fillRect(10, 10, 50, 50);
-
         // Apply camera transform
         this.camera.applyTransform(ctx);
-
-        // Debug: Draw a rectangle at world origin to verify camera transform
-        ctx.fillStyle = '#00ff00';
-        ctx.fillRect(0, 0, 100, 100);
-
-        // Debug: Draw a rectangle at player position
-        if (this.player) {
-            ctx.fillStyle = '#0000ff';
-            ctx.fillRect(this.player.x - 25, this.player.y - 25, 50, 50);
-        }
 
         // Draw tile map
         this.tileMap.draw(ctx, this.camera, this.gameTime);
@@ -531,23 +801,21 @@ export class GameScene extends Scene {
         // Draw player
         this.player.draw(ctx, this.camera);
 
+        // Draw world-space prompts
+        this._drawChestPrompt(ctx);
+
         // Draw particles
         this.particleSystem.draw(ctx);
+
+        if (this.config.debug.showCollisionBoxes) {
+            this.tileMap.drawCollisionDebug(ctx, this.camera);
+        }
 
         // Reset camera transform for UI
         this.camera.resetTransform(ctx);
 
         // Draw HUD
         this.hud.draw(ctx);
-
-        // Debug info overlay
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '14px monospace';
-        ctx.textAlign = 'left';
-        ctx.fillText(`Player: ${Math.round(this.player?.x || 0)}, ${Math.round(this.player?.y || 0)}`, 10, 100);
-        ctx.fillText(`Camera: ${Math.round(this.camera?.position?.x || 0)}, ${Math.round(this.camera?.position?.y || 0)}`, 10, 118);
-        ctx.fillText(`TileMap: ${this.tileMap?.width || 0}x${this.tileMap?.height || 0} tiles`, 10, 136);
-        ctx.fillText(`Sprites loaded: ${this.tileMap?.spriteSheets?.size || 0}`, 10, 154);
 
         // Draw level up screen if showing
         if (this.showingLevelUp) {

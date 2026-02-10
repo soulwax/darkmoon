@@ -1,58 +1,80 @@
 Darkmoon
 ├───.annot8_backup.json
 ├───.gitignore
+├───.markdownlint-cli2.json
 ├───CLAUDE.md
-├───enemy.js
-├───game.js
+├───dev_autostart.png
+├───dom.html
 ├───index.html
 ├───LICENSE.md
+├───package-lock.json
 ├───package.json
-├───particle.js
-├───player.js
+├───preview.png
+├───preview_autostart.png
+├───preview_autostart2.png
+├───preview_autostart3.png
+├───preview_autostart4.png
+├───preview_autostart_console.txt
+├───preview_world.png
 ├───README.md
 ├───style.css
 ├───TODO.md
+├───TODO_GRAPHICS.md
 ├───tree.txt
-├───ui.js
+├───tsconfig.json
 ├───vite.config.js
-├───weapon.js
+├───.claude/
+│   └───settings.local.json
 ├───docs/
 │   └───RESOURCES.md
 └───src/
-    ├───Game.js
-    ├───main.js
+    ├───Game.ts
+    ├───main.ts
+    ├───vite-env.d.ts
     ├───assets/
-    │   ├───AssetLoader.js
-    │   ├───AssetManifest.js
-    │   └───SpriteSheet.js
+    │   ├───AssetLoader.ts
+    │   ├───AssetManifest.ts
+    │   └───SpriteSheet.ts
+    ├───audio/
+    │   └───AudioSystem.ts
     ├───config/
-    │   ├───ConfigLoader.js
-    │   └───GameConfig.js
+    │   ├───ConfigLoader.ts
+    │   └───GameConfig.ts
     ├───core/
-    │   ├───EventBus.js
-    │   ├───GameLoop.js
-    │   └───Math.js
+    │   ├───EventBus.ts
+    │   ├───GameLoop.ts
+    │   └───Math.ts
     ├───ecs/
-    │   ├───Component.js
-    │   ├───Entity.js
+    │   ├───Component.ts
+    │   ├───Entity.ts
     │   └───components/
-    │       ├───AnimatorComponent.js
-    │       ├───ColliderComponent.js
-    │       ├───HealthComponent.js
-    │       ├───MovementComponent.js
-    │       └───SpriteComponent.js
+    │       ├───AnimatorComponent.ts
+    │       ├───ColliderComponent.ts
+    │       ├───HealthComponent.ts
+    │       ├───MovementComponent.ts
+    │       └───SpriteComponent.ts
     ├───entities/
-    │   ├───Enemy.js
-    │   ├───Player.js
-    │   ├───Projectile.js
-    │   └───XPGem.js
+    │   ├───Enemy.ts
+    │   ├───Player.ts
+    │   ├───PowerUpPickup.ts
+    │   ├───Projectile.ts
+    │   └───XPGem.ts
     ├───graphics/
-    │   ├───AnimatedSprite.js
-    │   ├───Camera.js
-    │   ├───Renderer.js
-    │   └───TileMap.js
+    │   ├───AnimatedSprite.ts
+    │   ├───Camera.ts
+    │   ├───Renderer.ts
+    │   └───TileMap.ts
     ├───input/
-    │   └───InputManager.js
+    │   └───InputManager.ts
+    ├───legacy/
+    │   ├───enemy.js
+    │   ├───game.js
+    │   ├───particle.js
+    │   ├───player.js
+    │   ├───ui.js
+    │   └───weapon.js
+    ├───powerups/
+    │   └───PowerUps.ts
     ├───Resources/
     │   ├───game.yaml
     │   ├───input_bindings.json
@@ -195,6 +217,29 @@ Darkmoon
     │   │       ├───vignette.vert.spv
     │   │       ├───water.frag.spv
     │   │       └───water.vert.spv
+    │   ├───Sounds/
+    │   │   ├───Ambient/
+    │   │   │   ├───dungeon_ambient.wav
+    │   │   │   ├───first_spring_ambient.wav
+    │   │   │   ├───river_of_death.wav
+    │   │   │   └───ui-background-ambient.wav
+    │   │   └───SFX/
+    │   │       ├───click_ui.wav
+    │   │       ├───gem_collect.wav
+    │   │       ├───hint_sound.wav
+    │   │       ├───knife_slash.wav
+    │   │       ├───level_up.wav
+    │   │       ├───menu_select.wav
+    │   │       ├───orb_hum.wav
+    │   │       ├───player_death.wav
+    │   │       ├───player_hurt1.wav
+    │   │       ├───player_hurt2.wav
+    │   │       ├───start_game.wav
+    │   │       ├───sword_slice.wav
+    │   │       ├───sword_thunder.wav
+    │   │       ├───thunderclap.wav
+    │   │       ├───zombie_death.wav
+    │   │       └───zombie_wounded.wav
     │   └───SpiteSheets/
     │       ├───carpet_blue.png
     │       ├───carpet_blue.yaml
@@ -421,10 +466,13 @@ Darkmoon
     │       │   ├───carpet.png
     │       │   ├───carpet.yaml
     │       │   ├───flooring.png
-    │       │   └───wooden.png
+    │       │   ├───wooden.png
+    │       │   └───wooden.yaml
     │       └───objects/
     │           ├───chest_01.png
+    │           ├───chest_01.yaml
     │           ├───chest_02.png
+    │           ├───chest_02.yaml
     │           ├───objects.png
     │           ├───rock_in_water_01-sheet.png
     │           ├───rock_in_water_01.png
@@ -435,19 +483,23 @@ Darkmoon
     │           ├───rock_in_water_06.png
     │           └───rock_in_water_frames.yaml
     ├───scenes/
-    │   ├───GameScene.js
-    │   ├───Scene.js
-    │   └───SceneManager.js
+    │   ├───GameScene.ts
+    │   ├───Scene.ts
+    │   └───SceneManager.ts
     ├───systems/
-    │   ├───ParticleSystem.js
-    │   ├───SpawnSystem.js
-    │   └───UpgradeSystem.js
+    │   ├───ParticleSystem.ts
+    │   ├───SpawnSystem.ts
+    │   └───UpgradeSystem.ts
+    ├───types/
+    │   └───js-yaml.d.ts
     ├───ui/
-    │   ├───HUD.js
-    │   ├───LevelUpScreen.js
-    │   └───Minimap.js
+    │   ├───HUD.ts
+    │   ├───LevelUpScreen.ts
+    │   └───Minimap.ts
     └───weapons/
-        ├───LightningStrike.js
-        ├───MagicMissiles.js
-        ├───MagicOrbs.js
-        └───Weapon.js
+        ├───LightningStrike.ts
+        ├───Longsword.ts
+        ├───MagicMissiles.ts
+        ├───MagicOrbs.ts
+        ├───Sword.ts
+        └───Weapon.ts

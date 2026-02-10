@@ -1,5 +1,4 @@
-// File: src/config/ConfigLoader.js
-// Loads and parses YAML configuration files
+// File: src/config/ConfigLoader.ts
 
 import yaml from 'js-yaml';
 import { GameConfig, type DeepPartial, type GameConfigData } from './GameConfig';
@@ -51,4 +50,3 @@ export class ConfigLoader {
         }
     }
 }
-

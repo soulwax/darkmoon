@@ -1,4 +1,4 @@
-// File: weapon.js
+// File: src/legacy/weapon.js
 // Base Weapon Class
 
 class Weapon {

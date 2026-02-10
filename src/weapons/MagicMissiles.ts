@@ -1,5 +1,4 @@
-// File: src/weapons/MagicMissiles.js
-// Auto-targeting projectile weapon
+// File: src/weapons/MagicMissiles.ts
 
 import { Weapon, type WeaponUpgradeInfo } from './Weapon';
 import { Projectile } from '../entities/Projectile';
@@ -202,4 +201,3 @@ export class MagicMissiles extends Weapon {
         };
     }
 }
-

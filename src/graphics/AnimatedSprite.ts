@@ -1,5 +1,4 @@
-// File: src/graphics/AnimatedSprite.js
-// Animation controller for sprite-based animations
+// File: src/graphics/AnimatedSprite.ts
 
 import type { SpriteSheet, AnimationData, AnimationFrame } from '../assets/SpriteSheet';
 

@@ -1,5 +1,4 @@
-// File: src/Game.js
-// Main game orchestrator
+// File: src/Game.ts
 
 import { GameLoop } from './core/GameLoop';
 import { eventBus, GameEvents } from './core/EventBus';
@@ -282,4 +281,3 @@ export class Game {
         }
     }
 }
-

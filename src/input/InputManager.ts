@@ -1,5 +1,4 @@
-// File: src/input/InputManager.js
-// Keyboard and mouse input handling
+// File: src/input/InputManager.ts
 
 import { Vector2, MathUtils } from '../core/Math';
 import type { Camera } from '../graphics/Camera';
@@ -349,4 +348,3 @@ export class InputManager {
         window.removeEventListener('blur', this._handlers.blur);
     }
 }
-

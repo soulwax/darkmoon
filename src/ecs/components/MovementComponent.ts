@@ -1,5 +1,4 @@
-// File: src/ecs/components/MovementComponent.js
-// Component for movement physics
+// File: src/ecs/components/MovementComponent.ts
 
 import { Component } from '../Component';
 import { MathUtils, type Direction } from '../../core/Math';
@@ -229,4 +228,3 @@ export class MovementComponent extends Component {
         this.inputY = 0;
     }
 }
-

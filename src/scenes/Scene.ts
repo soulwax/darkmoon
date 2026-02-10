@@ -1,5 +1,4 @@
-// File: src/scenes/Scene.js
-// Base scene class
+// File: src/scenes/Scene.ts
 
 import type { Game } from '../Game';
 import type { InputManager } from '../input/InputManager';

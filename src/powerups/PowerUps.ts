@@ -1,5 +1,4 @@
 // File: src/powerups/PowerUps.ts
-// Powerup definitions and weighted selection
 
 export type PowerUpType = 'heal' | 'shield' | 'haste' | 'rage' | 'magnet' | 'xp' | 'bomb';
 
@@ -83,4 +82,3 @@ export function pickRandomPowerUpType(rng: () => number = Math.random): PowerUpT
 
     return 'heal';
 }
-

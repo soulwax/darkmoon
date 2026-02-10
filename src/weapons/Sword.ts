@@ -1,5 +1,4 @@
-// File: src/weapons/Sword.js
-// Melee sword weapon with swing animation and knockback
+// File: src/weapons/Sword.ts
 
 import { Weapon } from './Weapon';
 import { MathUtils, type Direction } from '../core/Math';
@@ -332,4 +331,3 @@ export class Sword extends Weapon {
         return false;
     }
 }
-

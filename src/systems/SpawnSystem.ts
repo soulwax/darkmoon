@@ -1,5 +1,4 @@
-// File: src/systems/SpawnSystem.js
-// Enemy and item spawning system
+// File: src/systems/SpawnSystem.ts
 
 import { Enemy, EnemyTypes } from '../entities/Enemy';
 import { XPGem } from '../entities/XPGem';
@@ -34,6 +33,7 @@ export class SpawnSystem {
     worldHeight: number;
     maxEnemies: number;
     spriteImages: Record<string, HTMLImageElement>;
+    unsubscribers: Array<() => void>;
 
     constructor(config: GameConfig, camera: Camera, assetLoader: AssetLoader | null = null) {
         this.config = config;
@@ -69,6 +69,7 @@ export class SpawnSystem {
 
         // Sprite images cache
         this.spriteImages = {};
+        this.unsubscribers = [];
         this._loadSprites();
 
         // Setup event listeners
@@ -107,7 +108,7 @@ export class SpawnSystem {
 
     _setupEvents() {
         // Spawn XP gem when enemy killed
-        eventBus.on(GameEvents.ENEMY_KILLED, (data: { enemy: Enemy; x: number; y: number; xpValue: number }) => {
+        const unsubscribeEnemyKilled = eventBus.on(GameEvents.ENEMY_KILLED, (data: { enemy: Enemy; x: number; y: number; xpValue: number }) => {
             this.spawnXPGem(data.x, data.y, data.xpValue);
 
             // Chance to spawn a powerup pickup (kept fairly rare)
@@ -121,21 +122,24 @@ export class SpawnSystem {
                 this.enemies.splice(index, 1);
             }
         });
+        this.unsubscribers.push(unsubscribeEnemyKilled);
 
         // Handle XP collection
-        eventBus.on(GameEvents.XP_COLLECTED, (data: { gem: XPGem }) => {
+        const unsubscribeXpCollected = eventBus.on(GameEvents.XP_COLLECTED, (data: { gem: XPGem }) => {
             const index = this.xpGems.indexOf(data.gem);
             if (index !== -1) {
                 this.xpGems.splice(index, 1);
             }
         });
+        this.unsubscribers.push(unsubscribeXpCollected);
 
-        eventBus.on(GameEvents.POWERUP_COLLECTED, (data: { powerup: PowerUpPickup }) => {
+        const unsubscribePowerUpCollected = eventBus.on(GameEvents.POWERUP_COLLECTED, (data: { powerup: PowerUpPickup }) => {
             const index = this.powerUps.indexOf(data.powerup);
             if (index !== -1) {
                 this.powerUps.splice(index, 1);
             }
         });
+        this.unsubscribers.push(unsubscribePowerUpCollected);
     }
 
     /**
@@ -425,5 +429,12 @@ export class SpawnSystem {
         this.waveTimer = 0;
         this.spawnTimer = 0;
     }
-}
 
+    destroy() {
+        this.clear();
+        for (const unsubscribe of this.unsubscribers) {
+            unsubscribe();
+        }
+        this.unsubscribers = [];
+    }
+}

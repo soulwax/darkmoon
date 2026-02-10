@@ -1,4 +1,4 @@
-// File: particle.js
+// File: src/legacy/particle.js
 // Particle System for visual effects
 
 class Particle {

@@ -1,5 +1,4 @@
-// File: src/weapons/MagicOrbs.js
-// Rotating orbs that damage enemies on contact
+// File: src/weapons/MagicOrbs.ts
 
 import { Weapon, type WeaponUpgradeInfo } from './Weapon';
 import { MathUtils } from '../core/Math';
@@ -148,4 +147,3 @@ export class MagicOrbs extends Weapon {
         };
     }
 }
-

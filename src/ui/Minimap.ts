@@ -1,5 +1,4 @@
-// File: src/ui/Minimap.js
-// Minimap showing player position and nearby enemies
+// File: src/ui/Minimap.ts
 
 import type { Player } from '../entities/Player';
 import type { Enemy } from '../entities/Enemy';

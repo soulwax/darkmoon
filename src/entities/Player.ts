@@ -1,5 +1,4 @@
-// File: src/entities/Player.js
-// Player entity with sprite animations
+// File: src/entities/Player.ts
 
 import { Entity } from '../ecs/Entity';
 import { AnimatorComponent } from '../ecs/components/AnimatorComponent';
@@ -596,4 +595,3 @@ export class Player extends Entity {
         ctx.fillText(this.level.toString(), badgeX, badgeY);
     }
 }
-

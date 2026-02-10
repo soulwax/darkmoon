@@ -1,5 +1,4 @@
-// File: src/ecs/Component.js
-// Base component class
+// File: src/ecs/Component.ts
 
 import type { Entity } from './Entity';
 import type { Camera } from '../graphics/Camera';

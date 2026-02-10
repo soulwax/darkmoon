@@ -1,5 +1,4 @@
-// File: src/ecs/components/ColliderComponent.js
-// Component for collision detection
+// File: src/ecs/components/ColliderComponent.ts
 
 import { Component } from '../Component';
 import { MathUtils } from '../../core/Math';
@@ -241,4 +240,3 @@ export class ColliderComponent extends Component {
         ctx.restore();
     }
 }
-

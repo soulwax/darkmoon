@@ -1,5 +1,4 @@
-// File: src/core/GameLoop.js
-// RAF-based game loop with fixed timestep
+// File: src/core/GameLoop.ts
 
 export interface GameLoopOptions {
     targetFPS?: number;

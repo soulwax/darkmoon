@@ -11,8 +11,9 @@
 - [x] Add decoration layer placement (flowers/shrooms/rocks) with deterministic seed.
 - [x] Add a simple pond + dirt road stamping near spawn.
 - [x] Support multi-image animated tile sheets via `meta.files` (water + rock-in-water).
+- [x] Add interactable chest placement with loot rewards.
 - [ ] Add more terrain variants (cliffs, fences, carpets/floors) into world gen.
-- [ ] Add tile collision and keep player/enemy movement in-bounds.
+- [x] Add tile collision and keep player/enemy movement in-bounds.
 - [ ] Add optional debug overlays: collision tiles, spawn bounds, camera bounds.
 
 ## Characters/enemies

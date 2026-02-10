@@ -1,5 +1,4 @@
-// File: src/scenes/SceneManager.js
-// Manages scene transitions and overlays
+// File: src/scenes/SceneManager.ts
 
 import { eventBus, GameEvents } from '../core/EventBus';
 import type { Scene } from './Scene';
@@ -224,4 +223,3 @@ export class SceneManager {
         }
     }
 }
-

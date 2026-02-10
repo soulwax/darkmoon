@@ -1,5 +1,4 @@
-// File: src/config/GameConfig.js
-// Default game configuration with typed structure
+// File: src/config/GameConfig.ts
 
 export const DefaultConfig = {
     window: {

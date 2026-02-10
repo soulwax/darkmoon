@@ -1,5 +1,4 @@
-// File: src/graphics/TileMap.js
-// Tile-based world rendering
+// File: src/graphics/TileMap.ts
 
 import { MathUtils } from '../core/Math';
 import type { SpriteSheet, DrawOptions } from '../assets/SpriteSheet';
@@ -129,9 +128,27 @@ export class TileMap {
 
         const index = y * this.width + x;
         const collisionLayer = this.layers.collision;
-        if (!collisionLayer) return true;
-        const collisionValue = collisionLayer[index];
-        return collisionValue === 0;
+        if (collisionLayer && collisionLayer[index] !== 0) {
+            return false;
+        }
+
+        const groundTileId = this.layers.ground?.[index] || 0;
+        if (groundTileId !== 0) {
+            const groundDef = this.tileTypes.get(groundTileId);
+            if (groundDef && groundDef.walkable === false) {
+                return false;
+            }
+        }
+
+        const decorationTileId = this.layers.decoration?.[index] || 0;
+        if (decorationTileId !== 0) {
+            const decorationDef = this.tileTypes.get(decorationTileId);
+            if (decorationDef && decorationDef.walkable === false) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
@@ -343,4 +360,3 @@ export class TileMap {
         return this.height * this.tileSize;
     }
 }
-

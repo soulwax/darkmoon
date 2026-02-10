@@ -1,4 +1,4 @@
-// File: enemy.js
+// File: src/legacy/enemy.js
 // Base Enemy Class
 
 class Enemy {

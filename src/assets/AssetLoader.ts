@@ -1,5 +1,4 @@
-// File: src/assets/AssetLoader.js
-// Central asset loader for images and YAML files
+// File: src/assets/AssetLoader.ts
 
 import yaml from 'js-yaml';
 import { SpriteSheet, type SpriteSheetData } from './SpriteSheet';
@@ -279,4 +278,3 @@ export class AssetLoader {
 
 // Singleton instance
 export const assetLoader = new AssetLoader();
-

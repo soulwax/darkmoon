@@ -1,5 +1,4 @@
-// File: src/graphics/Renderer.js
-// Canvas rendering wrapper
+// File: src/graphics/Renderer.ts
 
 export class Renderer {
     canvas: HTMLCanvasElement;

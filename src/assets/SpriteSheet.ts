@@ -1,5 +1,4 @@
-// File: src/assets/SpriteSheet.js
-// Sprite sheet wrapper with animation support
+// File: src/assets/SpriteSheet.ts
 
 export interface DrawOptions {
     scale?: number;

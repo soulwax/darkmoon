@@ -1,5 +1,4 @@
-// File: src/weapons/Weapon.js
-// Base weapon class
+// File: src/weapons/Weapon.ts
 
 import { eventBus, GameEvents } from '../core/EventBus';
 import type { Player } from '../entities/Player';
@@ -174,4 +173,3 @@ export class Weapon {
         };
     }
 }
-

@@ -1,5 +1,4 @@
-// File: src/ecs/components/SpriteComponent.js
-// Component for static sprite rendering
+// File: src/ecs/components/SpriteComponent.ts
 
 import { Component } from '../Component';
 import type { SpriteSheet } from '../../assets/SpriteSheet';
@@ -65,4 +64,3 @@ export class SpriteComponent extends Component {
         });
     }
 }
-

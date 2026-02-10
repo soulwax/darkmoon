@@ -1,5 +1,4 @@
-// File: src/ui/LevelUpScreen.js
-// Level-up upgrade selection screen
+// File: src/ui/LevelUpScreen.ts
 
 export interface UpgradeOptionBase {
     name: string;

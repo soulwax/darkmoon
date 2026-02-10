@@ -1,5 +1,4 @@
-// File: src/graphics/Camera.js
-// 2D Camera with smooth follow and bounds
+// File: src/graphics/Camera.ts
 
 import { Vector2, MathUtils } from '../core/Math';
 
@@ -307,4 +306,3 @@ export class Camera {
         };
     }
 }
-

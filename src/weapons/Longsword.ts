@@ -1,5 +1,4 @@
-// File: src/weapons/Longsword.js
-// Manual longsword slash with vertical particle effect
+// File: src/weapons/Longsword.ts
 
 import { Weapon } from './Weapon';
 import type { Direction } from '../core/Math';
@@ -203,4 +202,3 @@ export class Longsword extends Weapon {
         ctx.restore();
     }
 }
-

@@ -1,5 +1,4 @@
-// File: src/entities/Projectile.js
-// Base projectile entity for weapons
+// File: src/entities/Projectile.ts
 
 import { Entity } from '../ecs/Entity';
 import { ColliderComponent } from '../ecs/components/ColliderComponent';
@@ -218,4 +217,3 @@ export class Projectile extends Entity {
         ctx.fill();
     }
 }
-

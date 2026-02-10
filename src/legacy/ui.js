@@ -1,4 +1,4 @@
-// File: ui.js
+// File: src/legacy/ui.js
 
 a// UI Manager
 class UIManager {

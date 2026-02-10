@@ -1,5 +1,4 @@
 // File: src/entities/PowerUpPickup.ts
-// Powerup collectible that moves to the player when in range
 
 import { Entity } from '../ecs/Entity';
 import { eventBus, GameEvents } from '../core/EventBus';
@@ -113,4 +112,3 @@ export class PowerUpPickup extends Entity {
         ctx.restore();
     }
 }
-

@@ -1,5 +1,4 @@
-// File: src/assets/AssetManifest.js
-// Default asset manifest for Darkmoon game
+// File: src/assets/AssetManifest.ts
 
 import type { AssetManifest } from './AssetLoader';
 
@@ -67,7 +66,9 @@ export const CoreAssetManifest: AssetManifest = {
         'shrooms': '/SpiteSheets/shrooms.yaml',
         'objects': '/SpiteSheets/objects.yaml',
         'water': '/SpiteSheets/water-sheet.yaml',
-        'rockInWater': '/SpiteSheets/objects/rock_in_water_frames.yaml'
+        'rockInWater': '/SpiteSheets/objects/rock_in_water_frames.yaml',
+        'chest01': '/SpiteSheets/objects/chest_01.yaml',
+        'chest02': '/SpiteSheets/objects/chest_02.yaml'
     },
     images: {
         'skeleton': '/SpiteSheets/characters/skeleton.png',

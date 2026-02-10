@@ -1,5 +1,4 @@
-// File: src/main.js
-// Entry point for Darkmoon game
+// File: src/main.ts
 
 import { Game } from './Game';
 import { ConfigLoader } from './config/ConfigLoader';
@@ -9,22 +8,26 @@ import { assetLoader } from './assets/AssetLoader';
 import { CoreAssetManifest } from './assets/AssetManifest';
 import { SceneManager } from './scenes/SceneManager';
 import { GameScene } from './scenes/GameScene';
+import { AudioSystem } from './audio/AudioSystem';
 
 interface GameOverData {
     time?: number;
     kills?: number;
     level?: number;
+    message?: string;
 }
 
 class Application {
     game: Game | null;
     config: GameConfig | null;
     sceneManager: SceneManager | null;
+    audioSystem: AudioSystem | null;
 
     constructor() {
         this.game = null;
         this.config = null;
         this.sceneManager = null;
+        this.audioSystem = null;
     }
 
     async init() {
@@ -62,6 +65,9 @@ class Application {
             this.config = new GameConfig();
         }
 
+        // Setup procedural audio engine and gameplay SFX hooks.
+        this.audioSystem = new AudioSystem(this.config.audio);
+
         // Create game instance
         this.game = new Game(canvas, this.config);
 
@@ -95,10 +101,26 @@ class Application {
     }
 
     setupUI() {
+        const unlockAudio = () => {
+            void this.audioSystem?.unlock();
+        };
+
+        window.addEventListener('pointerdown', unlockAudio, { once: true });
+        window.addEventListener('keydown', unlockAudio, { once: true });
+
+        const restartFromGameOver = () => {
+            this.audioSystem?.playUiSelect();
+            void this.audioSystem?.unlock();
+            this.hideGameOver();
+            eventBus.emit(GameEvents.GAME_RESTART);
+        };
+
         // Start button
         const startButton = document.getElementById('startButton');
         if (startButton) {
             startButton.addEventListener('click', () => {
+                this.audioSystem?.playUiSelect();
+                void this.audioSystem?.unlock();
                 this.hideMenu();
                 this.startGame();
             });
@@ -107,28 +129,33 @@ class Application {
         // Restart button
         const restartButton = document.getElementById('restartButton');
         if (restartButton) {
-            restartButton.addEventListener('click', () => {
-                this.hideGameOver();
-                eventBus.emit(GameEvents.GAME_RESTART);
-            });
+            restartButton.addEventListener('click', restartFromGameOver);
         }
 
         // In-game restart button
         const hudRestartButton = document.getElementById('hudRestartButton');
         if (hudRestartButton) {
-            hudRestartButton.addEventListener('click', () => {
-                this.hideGameOver();
-                eventBus.emit(GameEvents.GAME_RESTART);
-            });
+            hudRestartButton.addEventListener('click', restartFromGameOver);
         }
 
         // Listen for game over
         eventBus.on(GameEvents.GAME_OVER, (data: GameOverData) => {
             this.showGameOver(data);
         });
+
+        // Allow keyboard restart directly from death screen.
+        window.addEventListener('keydown', (e) => {
+            if (!this.isGameOverVisible()) return;
+            if (e.code === 'KeyR' || e.code === 'Enter' || e.code === 'Space') {
+                e.preventDefault();
+                restartFromGameOver();
+            }
+        });
     }
 
     startGame() {
+        void this.audioSystem?.unlock();
+
         // Switch to game scene
         this.sceneManager?.switchTo('game', {}, true);
 
@@ -157,6 +184,12 @@ class Application {
         }
     }
 
+    isGameOverVisible() {
+        const gameOver = document.getElementById('gameOverScreen');
+        if (!gameOver) return false;
+        return gameOver.style.display === 'flex' && !gameOver.classList.contains('hidden');
+    }
+
     showGameOver(data: GameOverData = {}) {
         const gameOver = document.getElementById('gameOverScreen');
         if (gameOver) {
@@ -166,6 +199,8 @@ class Application {
             // Update stats
             const timeEl = document.getElementById('finalTime');
             const killsEl = document.getElementById('finalKills');
+            const levelEl = document.getElementById('finalLevel');
+            const messageEl = document.getElementById('deathMessage');
 
             if (timeEl && data.time !== undefined) {
                 const minutes = Math.floor(data.time / 60);
@@ -175,6 +210,14 @@ class Application {
 
             if (killsEl && data.kills !== undefined) {
                 killsEl.textContent = data.kills.toString();
+            }
+
+            if (levelEl) {
+                levelEl.textContent = (data.level ?? 1).toString();
+            }
+
+            if (messageEl) {
+                messageEl.textContent = data.message || 'You died.';
             }
         }
     }
@@ -192,4 +235,3 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 // Export for debugging
 window.DarkmoonApp = Application;
-

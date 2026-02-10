@@ -1,5 +1,4 @@
-// File: src/systems/UpgradeSystem.js
-// Handles upgrade definitions and applications
+// File: src/systems/UpgradeSystem.ts
 
 import { MagicOrbs } from '../weapons/MagicOrbs';
 import { MagicMissiles } from '../weapons/MagicMissiles';
@@ -273,4 +272,3 @@ export class UpgradeSystem {
         }
     }
 }
-

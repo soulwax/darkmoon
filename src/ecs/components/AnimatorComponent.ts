@@ -1,5 +1,4 @@
-// File: src/ecs/components/AnimatorComponent.js
-// Component for animated sprite rendering
+// File: src/ecs/components/AnimatorComponent.ts
 
 import { Component } from '../Component';
 import { AnimatedSprite } from '../../graphics/AnimatedSprite';
@@ -192,4 +191,3 @@ export class AnimatorComponent extends Component {
         this.animator.scale = scale;
     }
 }
-

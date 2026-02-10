@@ -1,4 +1,4 @@
-// File: game.js
+// File: src/legacy/game.js
 // Main Game Class
 
 class Game {

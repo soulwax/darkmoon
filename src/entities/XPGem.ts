@@ -1,5 +1,4 @@
-// File: src/entities/XPGem.js
-// Experience gem collectible
+// File: src/entities/XPGem.ts
 
 import { Entity } from '../ecs/Entity';
 import { eventBus, GameEvents } from '../core/EventBus';
@@ -162,4 +161,3 @@ export class XPGem extends Entity {
         ctx.globalAlpha = 1;
     }
 }
-

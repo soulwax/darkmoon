@@ -1,5 +1,4 @@
-// File: src/ui/HUD.js
-// Heads-up display for game stats
+// File: src/ui/HUD.ts
 
 import type { Player, PlayerEffect } from '../entities/Player';
 import type { GameConfig } from '../config/GameConfig';

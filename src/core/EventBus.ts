@@ -1,5 +1,4 @@
-// File: src/core/EventBus.js
-// Pub/sub event system for decoupling game systems
+// File: src/core/EventBus.ts
 
 export type EventCallback = (data: any) => void;
 

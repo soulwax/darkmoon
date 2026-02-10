@@ -1,5 +1,4 @@
-// File: src/ecs/components/HealthComponent.js
-// Component for health and damage system
+// File: src/ecs/components/HealthComponent.ts
 
 import { Component } from '../Component';
 import { eventBus, GameEvents } from '../../core/EventBus';
@@ -207,4 +206,3 @@ export class HealthComponent extends Component {
         return Math.floor(this.invulnerabilityTimer * 10) % 2 === 0;
     }
 }
-

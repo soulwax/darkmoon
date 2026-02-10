@@ -1,5 +1,4 @@
-// File: src/entities/Enemy.js
-// Base enemy entity with sprite support and knockback physics
+// File: src/entities/Enemy.ts
 
 import { Entity } from '../ecs/Entity';
 import { ColliderComponent } from '../ecs/components/ColliderComponent';
@@ -287,6 +286,7 @@ export class Enemy extends Entity {
     _onDeath() {
         eventBus.emit(GameEvents.ENEMY_KILLED, {
             enemy: this,
+            type: this.type,
             x: this.x,
             y: this.y,
             xpValue: this.xpValue,
@@ -524,4 +524,3 @@ export class Enemy extends Entity {
         ctx.strokeRect(barX, barY, barWidth, barHeight);
     }
 }
-

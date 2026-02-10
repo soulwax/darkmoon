@@ -1,4 +1,4 @@
-// File: player.js
+// File: src/legacy/player.js
 // Player Class
 
 class Player {

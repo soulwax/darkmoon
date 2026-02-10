@@ -1,5 +1,4 @@
-// File: src/weapons/LightningStrike.js
-// Area-of-effect lightning attack
+// File: src/weapons/LightningStrike.ts
 
 import { Weapon, type WeaponUpgradeInfo } from './Weapon';
 import { MathUtils } from '../core/Math';
@@ -274,4 +273,3 @@ export class LightningStrike extends Weapon {
         };
     }
 }
-
