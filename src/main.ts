@@ -1,14 +1,14 @@
 // File: src/main.ts
 
 import { Game } from './Game';
+import { assetLoader } from './assets/AssetLoader';
+import { CoreAssetManifest } from './assets/AssetManifest';
+import { AudioSystem } from './audio/AudioSystem';
 import { ConfigLoader } from './config/ConfigLoader';
 import { GameConfig } from './config/GameConfig';
 import { eventBus, GameEvents } from './core/EventBus';
-import { assetLoader } from './assets/AssetLoader';
-import { CoreAssetManifest } from './assets/AssetManifest';
-import { SceneManager } from './scenes/SceneManager';
 import { GameScene } from './scenes/GameScene';
-import { AudioSystem } from './audio/AudioSystem';
+import { SceneManager } from './scenes/SceneManager';
 
 interface GameOverData {
     time?: number;
@@ -65,7 +65,7 @@ class Application {
             this.config = new GameConfig();
         }
 
-        // Setup procedural audio engine and gameplay SFX hooks.
+        // Setup authored audio engine and gameplay SFX hooks.
         this.audioSystem = new AudioSystem(this.config.audio);
 
         // Create game instance
