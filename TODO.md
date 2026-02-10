@@ -17,16 +17,16 @@ Make what exists feel *good* before adding more.
 
 ### Screen Flow
 
-- [ ] Main menu scene (game world dimly visible behind it)
-- [ ] Pause overlay scene (not just frozen frame)
-- [ ] Death / game-over screen with run stats (kills, time, damage dealt, gems collected)
-- [ ] Transition effects between scenes (fade, wipe)
+- [x] Main menu scene (game world dimly visible behind it)
+- [x] Pause overlay scene (not just frozen frame)
+- [x] Death / game-over screen with run stats (kills, time, damage dealt, gems collected)
+- [x] Transition effects between scenes (fade, wipe)
 
 ### Juice Pass
 
-- [ ] Hitstop — 2-3 frame freeze on heavy hits
+- [x] Hitstop — 2-3 frame freeze on heavy hits
 - [ ] Camera punch on player damage
-- [ ] Low-health vignette (red edge darkening)
+- [x] Low-health vignette (red edge darkening)
 - [ ] XP gems burst outward before magnetizing in
 - [ ] Wire up the `armor` stat to actual damage reduction
 - [ ] Wire up the `luck` stat to actual RNG modifiers (drop rates, crit chance)

@@ -41,6 +41,15 @@
             <button id="audioOptionsButton" title="Audio Options">Audio</button>
         </div>
 
+        <!-- Pause Overlay -->
+        <div id="pauseOverlay" class="hidden">
+            <div class="pause-content">
+                <h2>Paused</h2>
+                <p>Press ESC to resume</p>
+                <button id="pauseResumeButton">Resume</button>
+            </div>
+        </div>
+
         <!-- Level Up Screen -->
         <div id="levelUpScreen" class="hidden">
             <div class="level-up-content">
@@ -59,6 +68,8 @@
                     <p>Time Survived: <span id="finalTime">0:00</span></p>
                     <p>Enemies Killed: <span id="finalKills">0</span></p>
                     <p>Level Reached: <span id="finalLevel">1</span></p>
+                    <p>Damage Dealt: <span id="finalDamage">0</span></p>
+                    <p>Gems Collected: <span id="finalGems">0</span></p>
                 </div>
                 <button id="restartButton">Play Again</button>
                 <p class="restart-hint">Press R, Enter, or Space to restart</p>

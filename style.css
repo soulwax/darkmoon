@@ -243,7 +243,8 @@ button {
 #level-up-screen,
 #gameOverScreen,
 #startScreen,
-#audioOptionsScreen {
+#audioOptionsScreen,
+#pauseOverlay {
     position: absolute;
     top: 0;
     left: 0;
@@ -274,6 +275,59 @@ button {
     box-shadow:
         0 0 0 4px var(--px-border-dark),
         8px 8px 0 0 var(--px-shadow);
+}
+
+.pause-content {
+    width: min(92%, 420px);
+    padding: 24px 20px;
+    text-align: center;
+    background: var(--px-panel);
+    border: 3px solid var(--px-border);
+    outline: 3px solid var(--px-black);
+    box-shadow:
+        0 0 0 4px var(--px-border-dark),
+        8px 8px 0 0 var(--px-shadow);
+}
+
+.pause-content h2 {
+    color: var(--px-border);
+    font-size: clamp(24px, 5vw, 38px);
+    margin-bottom: 10px;
+    text-shadow: 2px 2px 0 var(--px-black);
+}
+
+.pause-content p {
+    color: var(--px-muted);
+    font-size: 12px;
+    margin-bottom: 16px;
+    letter-spacing: 0.08em;
+}
+
+#pauseResumeButton {
+    background: repeating-linear-gradient(
+        90deg,
+        var(--px-success-0) 0 8px,
+        var(--px-success-1) 8px 16px
+    );
+    color: #fff7e3;
+    border: 2px solid #2a140e;
+    outline: 2px solid var(--px-black);
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 0 var(--px-shadow);
+}
+
+#pauseResumeButton:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 5px 5px 0 0 var(--px-shadow);
+}
+
+#pauseResumeButton:active {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 var(--px-shadow);
 }
 
 .audio-options-content {
@@ -552,6 +606,12 @@ button {
     color: var(--px-success-1);
 }
 
+#startScreen {
+    background:
+        linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.82)),
+        url('./preview_world.png') center / cover no-repeat;
+}
+
 .start-actions {
     display: flex;
     justify-content: center;
@@ -675,7 +735,8 @@ button {
     .level-up-content,
     .game-over-content,
     .start-content,
-    .audio-options-content {
+    .audio-options-content,
+    .pause-content {
         width: 95%;
         padding: 20px 14px;
     }

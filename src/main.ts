@@ -15,6 +15,8 @@ interface GameOverData {
     time?: number;
     kills?: number;
     level?: number;
+    damageDealt?: number;
+    gemsCollected?: number;
     message?: string;
 }
 
@@ -230,7 +232,33 @@ class Application {
 
         // Listen for game over
         eventBus.on(GameEvents.GAME_OVER, (data: GameOverData) => {
+            this.hidePauseOverlay();
             this.showGameOver(data);
+        });
+
+        // Pause overlay controls
+        const pauseResumeButton = document.getElementById('pauseResumeButton');
+        if (pauseResumeButton) {
+            pauseResumeButton.addEventListener('click', () => {
+                this.audioSystem?.playUiSelect();
+                eventBus.emit(GameEvents.GAME_RESUME);
+            });
+        }
+
+        eventBus.on(GameEvents.GAME_PAUSE, () => {
+            this.showPauseOverlay();
+        });
+
+        eventBus.on(GameEvents.GAME_RESUME, () => {
+            this.hidePauseOverlay();
+        });
+
+        eventBus.on(GameEvents.GAME_START, () => {
+            this.hidePauseOverlay();
+        });
+
+        eventBus.on(GameEvents.GAME_RESTART, () => {
+            this.hidePauseOverlay();
         });
 
         // Allow keyboard restart directly from death screen.
@@ -239,6 +267,14 @@ class Application {
             if (e.code === 'KeyR' || e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
                 restartFromGameOver();
+            }
+        });
+
+        // Resume from pause even when gameplay loop is paused.
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Escape' && this.game?.paused) {
+                e.preventDefault();
+                eventBus.emit(GameEvents.GAME_RESUME);
             }
         });
 
@@ -359,7 +395,7 @@ class Application {
         void this.audioSystem?.unlock();
 
         // Switch to game scene
-        this.sceneManager?.switchTo('game', {}, true);
+        this.sceneManager?.switchTo('game', {}, false, 'wipe');
 
         // Start game loop
         eventBus.emit(GameEvents.GAME_START);
@@ -386,6 +422,22 @@ class Application {
         }
     }
 
+    showPauseOverlay() {
+        const pause = document.getElementById('pauseOverlay');
+        if (pause) {
+            pause.classList.remove('hidden');
+            pause.style.display = 'flex';
+        }
+    }
+
+    hidePauseOverlay() {
+        const pause = document.getElementById('pauseOverlay');
+        if (pause) {
+            pause.classList.add('hidden');
+            pause.style.display = 'none';
+        }
+    }
+
     isGameOverVisible() {
         const gameOver = document.getElementById('gameOverScreen');
         if (!gameOver) return false;
@@ -402,6 +454,8 @@ class Application {
             const timeEl = document.getElementById('finalTime');
             const killsEl = document.getElementById('finalKills');
             const levelEl = document.getElementById('finalLevel');
+            const damageEl = document.getElementById('finalDamage');
+            const gemsEl = document.getElementById('finalGems');
             const messageEl = document.getElementById('deathMessage');
 
             if (timeEl && data.time !== undefined) {
@@ -416,6 +470,14 @@ class Application {
 
             if (levelEl) {
                 levelEl.textContent = (data.level ?? 1).toString();
+            }
+
+            if (damageEl) {
+                damageEl.textContent = Math.floor(data.damageDealt ?? 0).toLocaleString();
+            }
+
+            if (gemsEl) {
+                gemsEl.textContent = (data.gemsCollected ?? 0).toLocaleString();
             }
 
             if (messageEl) {

@@ -56,6 +56,9 @@ export class GameScene extends Scene {
     showingLevelUp: boolean;
     gameTime: number;
     killCount: number;
+    damageDealt: number;
+    gemsCollected: number;
+    hitstopTimer: number;
     worldChests: WorldChest[];
     nearestChest: WorldChest | null;
     chestInteractRange: number;
@@ -80,6 +83,9 @@ export class GameScene extends Scene {
         // Game state
         this.gameTime = 0;
         this.killCount = 0;
+        this.damageDealt = 0;
+        this.gemsCollected = 0;
+        this.hitstopTimer = 0;
         this.worldChests = [];
         this.nearestChest = null;
         this.chestInteractRange = 36;
@@ -97,6 +103,7 @@ export class GameScene extends Scene {
         });
 
         eventBus.on(GameEvents.XP_COLLECTED, (data: { value: number; x: number; y: number }) => {
+            this.gemsCollected++;
             if (this.player) {
                 this.player.gainXP(data.value);
             }
@@ -104,6 +111,15 @@ export class GameScene extends Scene {
         });
 
         eventBus.on(GameEvents.ENEMY_DAMAGED, (data: { enemy: { x: number; y: number }; amount: number }) => {
+            if (typeof data.amount === 'number' && data.amount > 0) {
+                this.damageDealt += data.amount;
+                if (data.amount >= 18) {
+                    const targetFps = this.config.graphics?.targetFPS || 60;
+                    const frame = 1 / targetFps;
+                    const hitstopFrames = data.amount >= 35 ? 3 : 2;
+                    this.hitstopTimer = Math.max(this.hitstopTimer, frame * hitstopFrames);
+                }
+            }
             this.particleSystem?.createHitEffect(data.enemy.x, data.enemy.y, '#fff');
             this.particleSystem?.createDamageNumber(data.enemy.x, data.enemy.y, data.amount, '#fff');
         });
@@ -141,6 +157,8 @@ export class GameScene extends Scene {
                 time: this.gameTime,
                 kills: this.killCount,
                 level: this.player?.level || 1,
+                damageDealt: this.damageDealt,
+                gemsCollected: this.gemsCollected,
                 message: 'You were overwhelmed. Rise again?'
             });
         });
@@ -206,6 +224,9 @@ export class GameScene extends Scene {
         // Reset state
         this.gameTime = 0;
         this.killCount = 0;
+        this.damageDealt = 0;
+        this.gemsCollected = 0;
+        this.hitstopTimer = 0;
         this.showingLevelUp = false;
         this.nearestChest = null;
     }
@@ -706,6 +727,37 @@ export class GameScene extends Scene {
         ctx.restore();
     }
 
+    _drawLowHealthVignette(ctx: CanvasRenderingContext2D) {
+        const health = this.player?.getComponent<HealthComponent>('HealthComponent');
+        if (!health || health.maxHealth <= 0) return;
+
+        const healthRatio = health.health / health.maxHealth;
+        if (healthRatio >= 0.4) return;
+
+        const intensity = Math.max(0, Math.min(1, (0.4 - healthRatio) / 0.4));
+        const pulse = 0.9 + Math.sin(this.gameTime * 6) * 0.1;
+        const alpha = intensity * pulse;
+        const width = this.game.canvas.width;
+        const height = this.game.canvas.height;
+
+        const gradient = ctx.createRadialGradient(
+            width * 0.5,
+            height * 0.5,
+            Math.min(width, height) * 0.2,
+            width * 0.5,
+            height * 0.5,
+            Math.max(width, height) * 0.72
+        );
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        gradient.addColorStop(0.65, `rgba(95, 0, 0, ${0.2 * alpha})`);
+        gradient.addColorStop(1, `rgba(95, 0, 0, ${0.6 * alpha})`);
+
+        ctx.save();
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+    }
+
     update(deltaTime: number) {
         // Update input (even if a level-up overlay is showing)
         this.inputManager.update();
@@ -718,8 +770,6 @@ export class GameScene extends Scene {
 
         if (this.showingLevelUp) return;
 
-        this.gameTime += deltaTime;
-
         // Handle pause
         if (this.inputManager.isActionPressed('pause')) {
             if (this.game.paused) {
@@ -728,6 +778,13 @@ export class GameScene extends Scene {
                 eventBus.emit(GameEvents.GAME_PAUSE);
             }
         }
+
+        if (this.hitstopTimer > 0) {
+            this.hitstopTimer = Math.max(0, this.hitstopTimer - deltaTime);
+            return;
+        }
+
+        this.gameTime += deltaTime;
 
         // Update player
         const playerPreviousX = this.player.x;
@@ -813,6 +870,8 @@ export class GameScene extends Scene {
 
         // Reset camera transform for UI
         this.camera.resetTransform(ctx);
+
+        this._drawLowHealthVignette(ctx);
 
         // Draw HUD
         this.hud.draw(ctx);

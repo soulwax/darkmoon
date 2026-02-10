@@ -4,6 +4,8 @@ import { eventBus, GameEvents } from '../core/EventBus';
 import type { Scene } from './Scene';
 import type { Game } from '../Game';
 
+type TransitionStyle = 'fade' | 'wipe';
+
 export class SceneManager {
     game: Game;
     scenes: Map<string, Scene>;
@@ -13,6 +15,7 @@ export class SceneManager {
     transitionDuration: number;
     transitionTimer: number;
     transitionAlpha: number;
+    transitionStyle: TransitionStyle;
     pendingScene: Scene | null;
     pendingData: Record<string, unknown> | null;
 
@@ -27,6 +30,7 @@ export class SceneManager {
         this.transitionDuration = 0.3;
         this.transitionTimer = 0;
         this.transitionAlpha = 0;
+        this.transitionStyle = 'fade';
         this.pendingScene = null;
         this.pendingData = null;
     }
@@ -45,8 +49,14 @@ export class SceneManager {
      * @param {string} name
      * @param {Object} [data] - Data to pass to new scene
      * @param {boolean} [instant=false] - Skip transition
+     * @param {TransitionStyle} [style='fade'] - Transition style
      */
-    switchTo(name: string, data: Record<string, unknown> = {}, instant: boolean = false) {
+    switchTo(
+        name: string,
+        data: Record<string, unknown> = {},
+        instant: boolean = false,
+        style: TransitionStyle = 'fade'
+    ) {
         const scene = this.scenes.get(name);
         if (!scene) {
             console.error(`Scene not found: ${name}`);
@@ -54,10 +64,17 @@ export class SceneManager {
         }
 
         if (instant) {
+            this.transitioning = false;
+            this.transitionTimer = 0;
+            this.transitionAlpha = 0;
+            this.pendingScene = null;
+            this.pendingData = null;
             this._doSwitch(scene, data);
         } else {
             this.transitioning = true;
             this.transitionTimer = 0;
+            this.transitionAlpha = 0;
+            this.transitionStyle = style;
             this.pendingScene = scene;
             this.pendingData = data;
         }
@@ -218,8 +235,19 @@ export class SceneManager {
 
         // Draw transition fade
         if (this.transitioning && this.transitionAlpha > 0) {
-            ctx.fillStyle = `rgba(0, 0, 0, ${this.transitionAlpha})`;
-            ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+            if (this.transitionStyle === 'wipe') {
+                const canvasWidth = this.game.canvas.width;
+                const coverWidth = Math.ceil(canvasWidth * this.transitionAlpha);
+                const halfDuration = this.transitionDuration / 2;
+                const secondHalf = this.transitionTimer >= halfDuration;
+                const x = secondHalf ? canvasWidth - coverWidth : 0;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x, 0, coverWidth, this.game.canvas.height);
+            } else {
+                ctx.fillStyle = `rgba(0, 0, 0, ${this.transitionAlpha})`;
+                ctx.fillRect(0, 0, this.game.canvas.width, this.game.canvas.height);
+            }
         }
     }
 }
