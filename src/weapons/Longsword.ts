@@ -95,8 +95,6 @@ export class Longsword extends Weapon {
 
         const halfWidth = this.slashWidth / 2;
         const halfLength = this.slashLength / 2;
-        const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
-        const damage = Math.floor(this.damage * mult);
 
         for (const enemy of enemies) {
             if (enemy.destroyed) continue;
@@ -109,6 +107,8 @@ export class Longsword extends Weapon {
                 : (Math.abs(dx) <= halfWidth + enemy.size && Math.abs(dy) <= halfLength + enemy.size);
 
             if (inSlash) {
+                const damageCtx = this.getDamageContext(this.damage, 0.08);
+                const damage = damageCtx.damage;
                 enemy.takeDamage(damage, this.owner);
 
                 if (enemy.applyKnockback) {

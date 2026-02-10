@@ -1,5 +1,4 @@
 // File: src/audio/ProceduralAudioSystem.ts
-// Lightweight procedural audio engine built on Web Audio API.
 
 import { eventBus, GameEvents } from '../core/EventBus';
 

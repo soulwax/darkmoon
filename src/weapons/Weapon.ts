@@ -159,6 +159,26 @@ export class Weapon {
         // Override in subclass
     }
 
+    getDamageContext(baseDamage: number, baseCritChance: number = 0.05) {
+        const mult =
+            typeof this.owner.getDamageMultiplier === 'function'
+                ? this.owner.getDamageMultiplier()
+                : (this.owner.stats?.damageMultiplier || 1);
+
+        const crit =
+            typeof this.owner.rollCriticalHit === 'function'
+                ? this.owner.rollCriticalHit(baseCritChance)
+                : false;
+
+        const critMult =
+            crit && typeof this.owner.getCritDamageMultiplier === 'function'
+                ? this.owner.getCritDamageMultiplier()
+                : 1;
+
+        const damage = Math.max(1, Math.floor(baseDamage * mult * critMult));
+        return { damage, crit };
+    }
+
     /**
      * Get upgrade info for UI
      * @returns {Object}

@@ -36,7 +36,8 @@ Darkmoon
     │   ├───AssetManifest.ts
     │   └───SpriteSheet.ts
     ├───audio/
-    │   └───AudioSystem.ts
+    │   ├───AudioSystem.ts
+    │   └───ProceduralAudioSystem.ts
     ├───config/
     │   ├───ConfigLoader.ts
     │   └───GameConfig.ts
@@ -278,8 +279,16 @@ Darkmoon
     │       │   ├───player_dummy.png
     │       │   ├───rpc_char_main.json
     │       │   ├───skeleton.png
+    │       │   ├───skeleton.yaml
     │       │   ├───skeleton_swordless.png
     │       │   ├───slime.png
+    │       │   ├───slime.yaml
+    │       │   ├───enemies/
+    │       │   │   ├───enemies_spritesheets.yaml
+    │       │   │   ├───enemy_basic_sheet.png
+    │       │   │   ├───enemy_elite_sheet.png
+    │       │   │   ├───enemy_fast_sheet.png
+    │       │   │   └───enemy_tank_sheet.png
     │       │   ├───main_character/
     │       │   │   └───female/
     │       │   │       ├───character.json

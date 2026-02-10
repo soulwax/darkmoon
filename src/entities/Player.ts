@@ -295,10 +295,8 @@ export class Player extends Entity {
                 // Weapons apply `stats.damageMultiplier` at hit time.
                 break;
             case 'armor':
-                // Placeholder for future damage reduction calculations.
                 break;
             case 'luck':
-                // Placeholder for future RNG modifiers.
                 break;
         }
     }
@@ -328,6 +326,37 @@ export class Player extends Entity {
     getDamageMultiplier() {
         const mult = this._getEffectMultipliers();
         return this.stats.damageMultiplier * mult.damage;
+    }
+
+    getArmorReduction() {
+        return Math.max(0, Math.min(0.8, this.stats.armor));
+    }
+
+    getDamageTakenMultiplier() {
+        return 1 - this.getArmorReduction();
+    }
+
+    getLuckValue() {
+        return Math.max(0, this.stats.luck);
+    }
+
+    getDropRateMultiplier() {
+        return 1 + this.getLuckValue();
+    }
+
+    getCritChance(baseChance: number = 0.05) {
+        // Each +0.10 luck contributes +5% crit chance.
+        const chance = baseChance + this.getLuckValue() * 0.5;
+        return Math.max(0, Math.min(0.65, chance));
+    }
+
+    rollCriticalHit(baseChance: number = 0.05) {
+        return Math.random() < this.getCritChance(baseChance);
+    }
+
+    getCritDamageMultiplier() {
+        // Slight scaling with luck to keep higher-luck runs impactful.
+        return 1.8 + this.getLuckValue() * 0.4;
     }
 
     /**

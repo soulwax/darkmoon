@@ -1,0 +1,449 @@
+# File: src/Resources/SpiteSheets/characters/enemies/enemies_spritesheets.yaml
+
+meta:
+  frame_size:
+    w: 32
+    h: 32
+  layout:
+    columns: 4
+    rows: 4
+    row_order:
+    - down
+    - left
+    - right
+    - up
+    col_order:
+    - 0
+    - 1
+    - 2
+    - 3
+  notes: Rows = directions (down, left, right, up). Cols = walk frames 0..3.
+spritesheets:
+  basic:
+    image: enemy_basic_sheet.png
+    size:
+      w: 128
+      h: 128
+    frames:
+      down_0:
+        x: 0
+        y: 0
+        w: 32
+        h: 32
+      down_1:
+        x: 32
+        y: 0
+        w: 32
+        h: 32
+      down_2:
+        x: 64
+        y: 0
+        w: 32
+        h: 32
+      down_3:
+        x: 96
+        y: 0
+        w: 32
+        h: 32
+      left_0:
+        x: 0
+        y: 32
+        w: 32
+        h: 32
+      left_1:
+        x: 32
+        y: 32
+        w: 32
+        h: 32
+      left_2:
+        x: 64
+        y: 32
+        w: 32
+        h: 32
+      left_3:
+        x: 96
+        y: 32
+        w: 32
+        h: 32
+      right_0:
+        x: 0
+        y: 64
+        w: 32
+        h: 32
+      right_1:
+        x: 32
+        y: 64
+        w: 32
+        h: 32
+      right_2:
+        x: 64
+        y: 64
+        w: 32
+        h: 32
+      right_3:
+        x: 96
+        y: 64
+        w: 32
+        h: 32
+      up_0:
+        x: 0
+        y: 96
+        w: 32
+        h: 32
+      up_1:
+        x: 32
+        y: 96
+        w: 32
+        h: 32
+      up_2:
+        x: 64
+        y: 96
+        w: 32
+        h: 32
+      up_3:
+        x: 96
+        y: 96
+        w: 32
+        h: 32
+    animations:
+      walk_down:
+      - down_0
+      - down_1
+      - down_2
+      - down_3
+      walk_left:
+      - left_0
+      - left_1
+      - left_2
+      - left_3
+      walk_right:
+      - right_0
+      - right_1
+      - right_2
+      - right_3
+      walk_up:
+      - up_0
+      - up_1
+      - up_2
+      - up_3
+  fast:
+    image: enemy_fast_sheet.png
+    size:
+      w: 128
+      h: 128
+    frames:
+      down_0:
+        x: 0
+        y: 0
+        w: 32
+        h: 32
+      down_1:
+        x: 32
+        y: 0
+        w: 32
+        h: 32
+      down_2:
+        x: 64
+        y: 0
+        w: 32
+        h: 32
+      down_3:
+        x: 96
+        y: 0
+        w: 32
+        h: 32
+      left_0:
+        x: 0
+        y: 32
+        w: 32
+        h: 32
+      left_1:
+        x: 32
+        y: 32
+        w: 32
+        h: 32
+      left_2:
+        x: 64
+        y: 32
+        w: 32
+        h: 32
+      left_3:
+        x: 96
+        y: 32
+        w: 32
+        h: 32
+      right_0:
+        x: 0
+        y: 64
+        w: 32
+        h: 32
+      right_1:
+        x: 32
+        y: 64
+        w: 32
+        h: 32
+      right_2:
+        x: 64
+        y: 64
+        w: 32
+        h: 32
+      right_3:
+        x: 96
+        y: 64
+        w: 32
+        h: 32
+      up_0:
+        x: 0
+        y: 96
+        w: 32
+        h: 32
+      up_1:
+        x: 32
+        y: 96
+        w: 32
+        h: 32
+      up_2:
+        x: 64
+        y: 96
+        w: 32
+        h: 32
+      up_3:
+        x: 96
+        y: 96
+        w: 32
+        h: 32
+    animations:
+      walk_down:
+      - down_0
+      - down_1
+      - down_2
+      - down_3
+      walk_left:
+      - left_0
+      - left_1
+      - left_2
+      - left_3
+      walk_right:
+      - right_0
+      - right_1
+      - right_2
+      - right_3
+      walk_up:
+      - up_0
+      - up_1
+      - up_2
+      - up_3
+  tank:
+    image: enemy_tank_sheet.png
+    size:
+      w: 128
+      h: 128
+    frames:
+      down_0:
+        x: 0
+        y: 0
+        w: 32
+        h: 32
+      down_1:
+        x: 32
+        y: 0
+        w: 32
+        h: 32
+      down_2:
+        x: 64
+        y: 0
+        w: 32
+        h: 32
+      down_3:
+        x: 96
+        y: 0
+        w: 32
+        h: 32
+      left_0:
+        x: 0
+        y: 32
+        w: 32
+        h: 32
+      left_1:
+        x: 32
+        y: 32
+        w: 32
+        h: 32
+      left_2:
+        x: 64
+        y: 32
+        w: 32
+        h: 32
+      left_3:
+        x: 96
+        y: 32
+        w: 32
+        h: 32
+      right_0:
+        x: 0
+        y: 64
+        w: 32
+        h: 32
+      right_1:
+        x: 32
+        y: 64
+        w: 32
+        h: 32
+      right_2:
+        x: 64
+        y: 64
+        w: 32
+        h: 32
+      right_3:
+        x: 96
+        y: 64
+        w: 32
+        h: 32
+      up_0:
+        x: 0
+        y: 96
+        w: 32
+        h: 32
+      up_1:
+        x: 32
+        y: 96
+        w: 32
+        h: 32
+      up_2:
+        x: 64
+        y: 96
+        w: 32
+        h: 32
+      up_3:
+        x: 96
+        y: 96
+        w: 32
+        h: 32
+    animations:
+      walk_down:
+      - down_0
+      - down_1
+      - down_2
+      - down_3
+      walk_left:
+      - left_0
+      - left_1
+      - left_2
+      - left_3
+      walk_right:
+      - right_0
+      - right_1
+      - right_2
+      - right_3
+      walk_up:
+      - up_0
+      - up_1
+      - up_2
+      - up_3
+  elite:
+    image: enemy_elite_sheet.png
+    size:
+      w: 128
+      h: 128
+    frames:
+      down_0:
+        x: 0
+        y: 0
+        w: 32
+        h: 32
+      down_1:
+        x: 32
+        y: 0
+        w: 32
+        h: 32
+      down_2:
+        x: 64
+        y: 0
+        w: 32
+        h: 32
+      down_3:
+        x: 96
+        y: 0
+        w: 32
+        h: 32
+      left_0:
+        x: 0
+        y: 32
+        w: 32
+        h: 32
+      left_1:
+        x: 32
+        y: 32
+        w: 32
+        h: 32
+      left_2:
+        x: 64
+        y: 32
+        w: 32
+        h: 32
+      left_3:
+        x: 96
+        y: 32
+        w: 32
+        h: 32
+      right_0:
+        x: 0
+        y: 64
+        w: 32
+        h: 32
+      right_1:
+        x: 32
+        y: 64
+        w: 32
+        h: 32
+      right_2:
+        x: 64
+        y: 64
+        w: 32
+        h: 32
+      right_3:
+        x: 96
+        y: 64
+        w: 32
+        h: 32
+      up_0:
+        x: 0
+        y: 96
+        w: 32
+        h: 32
+      up_1:
+        x: 32
+        y: 96
+        w: 32
+        h: 32
+      up_2:
+        x: 64
+        y: 96
+        w: 32
+        h: 32
+      up_3:
+        x: 96
+        y: 96
+        w: 32
+        h: 32
+    animations:
+      walk_down:
+      - down_0
+      - down_1
+      - down_2
+      - down_3
+      walk_left:
+      - left_0
+      - left_1
+      - left_2
+      - left_3
+      walk_right:
+      - right_0
+      - right_1
+      - right_2
+      - right_3
+      walk_up:
+      - up_0
+      - up_1
+      - up_2
+      - up_3

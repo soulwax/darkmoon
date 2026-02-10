@@ -21,6 +21,11 @@ export class XPGem extends Entity {
     age: number;
     fadeStart: number;
     alpha: number;
+    burstVx: number;
+    burstVy: number;
+    burstTimeRemaining: number;
+    burstDrag: number;
+    magnetDelay: number;
 
     constructor(x: number, y: number, value: number = 5) {
         super(x, y);
@@ -56,6 +61,15 @@ export class XPGem extends Entity {
         // Fade out near end of life
         this.fadeStart = 25;
         this.alpha = 1;
+
+        // Spawn burst before magnet behavior kicks in.
+        const angle = Math.random() * Math.PI * 2;
+        const burstSpeed = 90 + Math.random() * 110;
+        this.burstVx = Math.cos(angle) * burstSpeed;
+        this.burstVy = Math.sin(angle) * burstSpeed;
+        this.burstTimeRemaining = 0.18 + Math.random() * 0.08;
+        this.burstDrag = 11;
+        this.magnetDelay = 0.16;
     }
 
     /**
@@ -82,8 +96,19 @@ export class XPGem extends Entity {
             this.alpha = 1 - (this.age - this.fadeStart) / (this.lifetime - this.fadeStart);
         }
 
+        // Initial outward burst.
+        if (this.burstTimeRemaining > 0 && !this.collecting) {
+            this.burstTimeRemaining -= deltaTime;
+            this.x += this.burstVx * deltaTime;
+            this.y += this.burstVy * deltaTime;
+
+            const drag = Math.max(0, 1 - this.burstDrag * deltaTime);
+            this.burstVx *= drag;
+            this.burstVy *= drag;
+        }
+
         // Check if player is in pickup range
-        if (player && !this.collecting) {
+        if (player && !this.collecting && this.age >= this.magnetDelay) {
             const dx = player.x - this.x;
             const dy = player.y - this.y;
             const dist = Math.sqrt(dx * dx + dy * dy);

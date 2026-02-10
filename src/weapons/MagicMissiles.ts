@@ -127,8 +127,8 @@ export class MagicMissiles extends Weapon {
             const dy = target.y - this.owner.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
 
-            const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
-            const finalDamage = Math.floor(this.damage * mult);
+            const damageCtx = this.getDamageContext(this.damage, 0.12);
+            const finalDamage = damageCtx.damage;
 
             const projectile = new Projectile(this.owner.x, this.owner.y, {
                 damage: finalDamage,

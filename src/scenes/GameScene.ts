@@ -59,6 +59,7 @@ export class GameScene extends Scene {
     damageDealt: number;
     gemsCollected: number;
     hitstopTimer: number;
+    weaponShakeCooldown: number;
     worldChests: WorldChest[];
     nearestChest: WorldChest | null;
     chestInteractRange: number;
@@ -86,6 +87,7 @@ export class GameScene extends Scene {
         this.damageDealt = 0;
         this.gemsCollected = 0;
         this.hitstopTimer = 0;
+        this.weaponShakeCooldown = 0;
         this.worldChests = [];
         this.nearestChest = null;
         this.chestInteractRange = 36;
@@ -124,8 +126,36 @@ export class GameScene extends Scene {
             this.particleSystem?.createDamageNumber(data.enemy.x, data.enemy.y, data.amount, '#fff');
         });
 
-        eventBus.on(GameEvents.PLAYER_DAMAGED, () => {
+        eventBus.on(GameEvents.PLAYER_DAMAGED, (data?: { source?: { x: number; y: number } | null }) => {
             this.camera?.shake(3, 0.2);
+
+            if (!this.camera) return;
+
+            const source = data?.source;
+            if (source && this.player) {
+                const dx = this.player.x - source.x;
+                const dy = this.player.y - source.y;
+                this.camera.punch(dx, dy, 6);
+            } else {
+                this.camera.punch(0, -1, 4);
+            }
+        });
+
+        eventBus.on(GameEvents.WEAPON_FIRED, (data?: { weapon?: { name?: string } }) => {
+            if (!this.camera || this.weaponShakeCooldown > 0) return;
+
+            const weaponName = data?.weapon?.name || '';
+            const presets: Record<string, { intensity: number; duration: number; cooldown: number }> = {
+                Sword: { intensity: 1.2, duration: 0.06, cooldown: 0.05 },
+                Longsword: { intensity: 2.2, duration: 0.1, cooldown: 0.08 },
+                'Magic Missiles': { intensity: 0.8, duration: 0.05, cooldown: 0.06 },
+                'Lightning Strike': { intensity: 3.5, duration: 0.16, cooldown: 0.14 }
+            };
+            const preset = presets[weaponName];
+            if (!preset) return;
+
+            this.camera.shake(preset.intensity, preset.duration);
+            this.weaponShakeCooldown = preset.cooldown;
         });
 
         eventBus.on(GameEvents.POWERUP_COLLECTED, (data: { type: string; x: number; y: number }) => {
@@ -135,7 +165,9 @@ export class GameScene extends Scene {
                 const enemies = this.spawnSystem?.getEnemies?.() || [];
                 const base = 40 + (this.player.level - 1) * 4;
                 const mult = typeof this.player.getDamageMultiplier === 'function' ? this.player.getDamageMultiplier() : 1;
-                const bombDamage = Math.floor(base * mult);
+                const crit = typeof this.player.rollCriticalHit === 'function' ? this.player.rollCriticalHit(0.08) : false;
+                const critMult = crit && typeof this.player.getCritDamageMultiplier === 'function' ? this.player.getCritDamageMultiplier() : 1;
+                const bombDamage = Math.floor(base * mult * critMult);
 
                 for (const enemy of enemies) {
                     if (enemy.destroyed) continue;
@@ -227,6 +259,7 @@ export class GameScene extends Scene {
         this.damageDealt = 0;
         this.gemsCollected = 0;
         this.hitstopTimer = 0;
+        this.weaponShakeCooldown = 0;
         this.showingLevelUp = false;
         this.nearestChest = null;
     }
@@ -605,7 +638,11 @@ export class GameScene extends Scene {
             this.spawnSystem.spawnXPGem(chest.worldX, chest.worldY, value);
         }
 
-        if (Math.random() < chest.powerUpChance) {
+        const dropMult = this.player && typeof this.player.getDropRateMultiplier === 'function'
+            ? this.player.getDropRateMultiplier()
+            : 1;
+        const chestPowerUpChance = Math.min(0.85, chest.powerUpChance * dropMult);
+        if (Math.random() < chestPowerUpChance) {
             this.spawnSystem.spawnPowerUp(chest.worldX, chest.worldY);
         }
 
@@ -770,6 +807,10 @@ export class GameScene extends Scene {
 
         if (this.showingLevelUp) return;
 
+        if (this.weaponShakeCooldown > 0) {
+            this.weaponShakeCooldown -= deltaTime;
+        }
+
         // Handle pause
         if (this.inputManager.isActionPressed('pause')) {
             if (this.game.paused) {
@@ -819,7 +860,12 @@ export class GameScene extends Scene {
             if (enemy.checkCollision(this.player)) {
                 const health = this.player.getComponent<HealthComponent>('HealthComponent');
                 if (health && !health.invulnerable) {
-                    health.takeDamage(enemy.damage * deltaTime * 2);
+                    const armorMult =
+                        typeof this.player.getDamageTakenMultiplier === 'function'
+                            ? this.player.getDamageTakenMultiplier()
+                            : 1;
+                    const damage = enemy.damage * deltaTime * 2 * armorMult;
+                    health.takeDamage(damage, enemy);
                 }
             }
         }

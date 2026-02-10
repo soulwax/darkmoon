@@ -8,10 +8,33 @@ import { MathUtils } from '../core/Math';
 import { pickRandomPowerUpType, type PowerUpType } from '../powerups/PowerUps';
 import type { Camera } from '../graphics/Camera';
 import type { AssetLoader } from '../assets/AssetLoader';
+import { SpriteSheet, type SpriteSheetData } from '../assets/SpriteSheet';
 import type { GameConfig } from '../config/GameConfig';
 import type { Player } from '../entities/Player';
 
 type EnemyTypeKey = keyof typeof EnemyTypes;
+
+interface EnemySpritePackFrame {
+    x: number;
+    y: number;
+    w?: number;
+    h?: number;
+}
+
+interface EnemySpritePackEntry {
+    image: string;
+    frames?: Record<string, EnemySpritePackFrame>;
+    animations?: Record<string, string[]>;
+}
+
+interface EnemySpritePackMeta {
+    frame_size?: { w?: number; h?: number };
+}
+
+interface EnemySpritePackData {
+    meta?: EnemySpritePackMeta;
+    spritesheets?: Record<string, EnemySpritePackEntry>;
+}
 
 export class SpawnSystem {
     config: GameConfig;
@@ -33,6 +56,7 @@ export class SpawnSystem {
     worldHeight: number;
     maxEnemies: number;
     spriteImages: Record<string, HTMLImageElement>;
+    spriteSheets: Record<string, SpriteSheet>;
     unsubscribers: Array<() => void>;
 
     constructor(config: GameConfig, camera: Camera, assetLoader: AssetLoader | null = null) {
@@ -69,6 +93,7 @@ export class SpawnSystem {
 
         // Sprite images cache
         this.spriteImages = {};
+        this.spriteSheets = {};
         this.unsubscribers = [];
         this._loadSprites();
 
@@ -82,10 +107,27 @@ export class SpawnSystem {
     _loadSprites() {
         // Prefer preloaded assets from the AssetLoader (manifest-driven)
         if (this.assetLoader) {
+            const enemySpriteSheets = ['skeleton', 'slime'];
+            for (const key of enemySpriteSheets) {
+                const spriteSheet = this.assetLoader.getSpriteSheet(key);
+                if (spriteSheet) {
+                    this.spriteSheets[key] = spriteSheet;
+                }
+            }
+
             const skeleton = this.assetLoader.getImage('skeleton');
             const slime = this.assetLoader.getImage('slime');
-            if (skeleton) this.spriteImages.skeleton = skeleton;
-            if (slime) this.spriteImages.slime = slime;
+            if (skeleton) {
+                this.spriteImages.skeleton = skeleton;
+                this.spriteImages.tank = skeleton;
+                this.spriteImages.elite = skeleton;
+            }
+            if (slime) {
+                this.spriteImages.slime = slime;
+                this.spriteImages.fast = slime;
+            }
+
+            this._buildEnemySpriteSheetsFromPack();
         }
 
         // Fallback: load directly (base-aware)
@@ -97,13 +139,127 @@ export class SpawnSystem {
             const skeletonImg = new Image();
             skeletonImg.src = resolve('/SpiteSheets/characters/skeleton.png');
             this.spriteImages.skeleton = skeletonImg;
+            this.spriteImages.tank = skeletonImg;
+            this.spriteImages.elite = skeletonImg;
+        }
+
+        if (!this.spriteImages.basic) {
+            const basicImg = new Image();
+            basicImg.src = resolve('/SpiteSheets/characters/enemies/enemy_basic_sheet.png');
+            this.spriteImages.basic = basicImg;
         }
 
         if (!this.spriteImages.slime) {
             const slimeImg = new Image();
             slimeImg.src = resolve('/SpiteSheets/characters/slime.png');
             this.spriteImages.slime = slimeImg;
+            this.spriteImages.fast = slimeImg;
         }
+
+        if (!this.spriteImages.fast) {
+            const fastImg = new Image();
+            fastImg.src = resolve('/SpiteSheets/characters/enemies/enemy_fast_sheet.png');
+            this.spriteImages.fast = fastImg;
+        }
+
+        if (!this.spriteImages.tank) {
+            const tankImg = new Image();
+            tankImg.src = resolve('/SpiteSheets/characters/enemies/enemy_tank_sheet.png');
+            this.spriteImages.tank = tankImg;
+        }
+
+        if (!this.spriteImages.elite) {
+            const eliteImg = new Image();
+            eliteImg.src = resolve('/SpiteSheets/characters/enemies/enemy_elite_sheet.png');
+            this.spriteImages.elite = eliteImg;
+        }
+    }
+
+    _buildEnemySpriteSheetsFromPack() {
+        if (!this.assetLoader) return;
+
+        const pack = this.assetLoader.getYaml<EnemySpritePackData>('enemySpritePack');
+        if (!pack || !pack.spritesheets) return;
+
+        const frameWidth = pack.meta?.frame_size?.w || 32;
+        const frameHeight = pack.meta?.frame_size?.h || 32;
+        const imageKeys: Record<string, string> = {
+            basic: 'enemySheetBasic',
+            fast: 'enemySheetFast',
+            tank: 'enemySheetTank',
+            elite: 'enemySheetElite'
+        };
+
+        for (const enemyType of Object.keys(imageKeys)) {
+            const entry = pack.spritesheets[enemyType];
+            if (!entry) continue;
+
+            const image = this.assetLoader.getImage(imageKeys[enemyType]);
+            if (!image) continue;
+
+            const spriteSheetData = this._createSpriteSheetDataFromPackEntry(enemyType, entry, frameWidth, frameHeight);
+            const spriteSheet = new SpriteSheet(enemyType, image, spriteSheetData);
+            this.spriteSheets[enemyType] = spriteSheet;
+            this.spriteImages[enemyType] = image;
+            this.assetLoader.spriteSheets.set(enemyType, spriteSheet);
+        }
+    }
+
+    _createSpriteSheetDataFromPackEntry(
+        enemyType: string,
+        entry: EnemySpritePackEntry,
+        frameWidth: number,
+        frameHeight: number
+    ): SpriteSheetData {
+        const frames = entry.frames || {};
+        const animations = entry.animations || {};
+        const directions = ['down', 'left', 'right', 'up'];
+        const tiles: SpriteSheetData['tiles'] = [];
+        let nextId = 0;
+
+        const runningRate = EnemyTypes[enemyType as EnemyTypeKey]?.animSpeed || 10;
+
+        for (const direction of directions) {
+            const animationKey = `walk_${direction}`;
+            const frameNames = animations[animationKey] || Object.keys(frames).filter((name) => name.startsWith(`${direction}_`)).sort();
+            const runningFrames = frameNames
+                .map((name) => frames[name])
+                .filter((frame): frame is EnemySpritePackFrame => !!frame)
+                .map((frame) => ({
+                    x: frame.x,
+                    y: frame.y,
+                    width: frame.w || frameWidth,
+                    height: frame.h || frameHeight
+                }));
+
+            if (runningFrames.length === 0) continue;
+
+            tiles.push({
+                id: nextId++,
+                direction: `${direction}_running`,
+                frame_rate: runningRate,
+                loop: true,
+                frame_list: runningFrames
+            });
+
+            tiles.push({
+                id: nextId++,
+                direction: `${direction}_idle`,
+                frame_rate: 4,
+                loop: true,
+                frame_list: [runningFrames[0]]
+            });
+        }
+
+        return {
+            meta: {
+                tile_size: Math.max(frameWidth, frameHeight),
+                frame_rate: runningRate,
+                loop: true,
+                file: [entry.image]
+            },
+            tiles
+        };
     }
 
     _setupEvents() {
@@ -112,7 +268,12 @@ export class SpawnSystem {
             this.spawnXPGem(data.x, data.y, data.xpValue);
 
             // Chance to spawn a powerup pickup (kept fairly rare)
-            if (Math.random() < 0.12) {
+            const dropMult =
+                this.target && typeof this.target.getDropRateMultiplier === 'function'
+                    ? this.target.getDropRateMultiplier()
+                    : 1;
+            const powerUpChance = Math.min(0.45, 0.12 * dropMult);
+            if (Math.random() < powerUpChance) {
                 this.spawnPowerUp(data.x, data.y);
             }
 
@@ -265,8 +426,9 @@ export class SpawnSystem {
 
         // Get sprite image for this enemy type
         const spriteImage = this.spriteImages[enemyType] || null;
+        const spriteSheet = this.spriteSheets[enemyType] || null;
 
-        const enemy = new Enemy(pos.x, pos.y, enemyType, this.config, spriteImage);
+        const enemy = new Enemy(pos.x, pos.y, enemyType, this.config, spriteImage, spriteSheet);
         if (this.target) {
             enemy.setTarget(this.target);
         }

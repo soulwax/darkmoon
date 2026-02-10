@@ -1,0 +1,82 @@
+# File: src/Resources/SpiteSheets/characters/slime.yaml
+
+meta:
+  tile_size: 32
+  frame_rate: 8
+  loop: true
+  file:
+    - slime.png
+
+tiles:
+  - id: 0
+    direction: "down_running"
+    frame_rate: 8
+    loop: true
+    frame_list:
+      - { x: 0, y: 0, width: 32, height: 32 }
+      - { x: 32, y: 0, width: 32, height: 32 }
+      - { x: 64, y: 0, width: 32, height: 32 }
+      - { x: 96, y: 0, width: 32, height: 32 }
+      - { x: 128, y: 0, width: 32, height: 32 }
+      - { x: 160, y: 0, width: 32, height: 32 }
+      - { x: 192, y: 0, width: 32, height: 32 }
+  - id: 1
+    direction: "left_running"
+    frame_rate: 8
+    loop: true
+    frame_list:
+      - { x: 0, y: 32, width: 32, height: 32 }
+      - { x: 32, y: 32, width: 32, height: 32 }
+      - { x: 64, y: 32, width: 32, height: 32 }
+      - { x: 96, y: 32, width: 32, height: 32 }
+      - { x: 128, y: 32, width: 32, height: 32 }
+      - { x: 160, y: 32, width: 32, height: 32 }
+      - { x: 192, y: 32, width: 32, height: 32 }
+  - id: 2
+    direction: "right_running"
+    frame_rate: 8
+    loop: true
+    frame_list:
+      - { x: 0, y: 64, width: 32, height: 32 }
+      - { x: 32, y: 64, width: 32, height: 32 }
+      - { x: 64, y: 64, width: 32, height: 32 }
+      - { x: 96, y: 64, width: 32, height: 32 }
+      - { x: 128, y: 64, width: 32, height: 32 }
+      - { x: 160, y: 64, width: 32, height: 32 }
+      - { x: 192, y: 64, width: 32, height: 32 }
+  - id: 3
+    direction: "up_running"
+    frame_rate: 8
+    loop: true
+    frame_list:
+      - { x: 0, y: 96, width: 32, height: 32 }
+      - { x: 32, y: 96, width: 32, height: 32 }
+      - { x: 64, y: 96, width: 32, height: 32 }
+      - { x: 96, y: 96, width: 32, height: 32 }
+      - { x: 128, y: 96, width: 32, height: 32 }
+      - { x: 160, y: 96, width: 32, height: 32 }
+      - { x: 192, y: 96, width: 32, height: 32 }
+  - id: 4
+    direction: "down_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 0, width: 32, height: 32 }
+  - id: 5
+    direction: "left_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 32, width: 32, height: 32 }
+  - id: 6
+    direction: "right_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 64, width: 32, height: 32 }
+  - id: 7
+    direction: "up_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 96, width: 32, height: 32 }

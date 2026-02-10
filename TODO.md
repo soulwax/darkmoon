@@ -47,10 +47,10 @@ Enemies stop being moving hitboxes and start being *problems to solve*.
 
 ### Sprites
 
-- [ ] Create/commission sprite sheets for basic, fast, tank, and elite enemies
-- [ ] Convert all enemy rendering to SpriteSheet + AnimatorComponent pipeline
-- [ ] Add consistent shadow sizing using sprite frame dimensions
-- [ ] Add enemy hit flash via sprite draw options (avoid ctx.filter)
+- [x] Create/commission sprite sheets for basic, fast, tank, and elite enemies
+- [x] Convert all enemy rendering to SpriteSheet + AnimatorComponent pipeline
+- [x] Add consistent shadow sizing using sprite frame dimensions
+- [x] Add enemy hit flash via sprite draw options (avoid ctx.filter)
 
 ### New Enemy Behaviors
 

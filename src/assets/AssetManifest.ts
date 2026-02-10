@@ -9,8 +9,8 @@ export const GameAssetManifest: AssetManifest = {
         'player': '/SpiteSheets/characters/player.yaml',
 
         // Enemies
-        // 'skeleton': '/SpiteSheets/characters/skeleton.yaml',
-        // 'slime': '/SpiteSheets/characters/slime.yaml',
+        'skeleton': '/SpiteSheets/characters/skeleton.yaml',
+        'slime': '/SpiteSheets/characters/slime.yaml',
 
         // Terrain
         'grass': '/SpiteSheets/grass.yaml',
@@ -26,9 +26,13 @@ export const GameAssetManifest: AssetManifest = {
 
     // Standalone images (no YAML)
     images: {
-        // Enemy sprites without YAML (use direct rendering)
+        // Enemy sprites and sheets
         'skeleton': '/SpiteSheets/characters/skeleton.png',
         'slime': '/SpiteSheets/characters/slime.png',
+        'enemySheetBasic': '/SpiteSheets/characters/enemies/enemy_basic_sheet.png',
+        'enemySheetFast': '/SpiteSheets/characters/enemies/enemy_fast_sheet.png',
+        'enemySheetTank': '/SpiteSheets/characters/enemies/enemy_tank_sheet.png',
+        'enemySheetElite': '/SpiteSheets/characters/enemies/enemy_elite_sheet.png',
 
         // UI elements
         // 'ui_heart': '/UI/heart.png',
@@ -37,7 +41,8 @@ export const GameAssetManifest: AssetManifest = {
     // YAML configs (non-sprite)
     yaml: {
         'gameConfig': '/game.yaml',
-        'keybindings': '/keybindings.yaml'
+        'keybindings': '/keybindings.yaml',
+        'enemySpritePack': '/SpiteSheets/characters/enemies/enemies_spritesheets.yaml'
     }
 };
 
@@ -58,6 +63,9 @@ export const MinimalAssetManifest: AssetManifest = {
 export const CoreAssetManifest: AssetManifest = {
     spriteSheets: {
         'player': '/SpiteSheets/characters/player.yaml',
+        // Enemy sprite sheets
+        'skeleton': '/SpiteSheets/characters/skeleton.yaml',
+        'slime': '/SpiteSheets/characters/slime.yaml',
         // World tiles
         'grass': '/SpiteSheets/grass.yaml',
         'dirtGrass': '/SpiteSheets/dirt-grass.yaml',
@@ -71,12 +79,19 @@ export const CoreAssetManifest: AssetManifest = {
         'chest02': '/SpiteSheets/objects/chest_02.yaml'
     },
     images: {
+        // Enemy image fallbacks
         'skeleton': '/SpiteSheets/characters/skeleton.png',
-        'slime': '/SpiteSheets/characters/slime.png'
+        'slime': '/SpiteSheets/characters/slime.png',
+        // Metadata-driven enemy sheets
+        'enemySheetBasic': '/SpiteSheets/characters/enemies/enemy_basic_sheet.png',
+        'enemySheetFast': '/SpiteSheets/characters/enemies/enemy_fast_sheet.png',
+        'enemySheetTank': '/SpiteSheets/characters/enemies/enemy_tank_sheet.png',
+        'enemySheetElite': '/SpiteSheets/characters/enemies/enemy_elite_sheet.png'
     },
     yaml: {
         'gameConfig': '/game.yaml',
-        'keybindings': '/keybindings.yaml'
+        'keybindings': '/keybindings.yaml',
+        'enemySpritePack': '/SpiteSheets/characters/enemies/enemies_spritesheets.yaml'
     }
 };
 
@@ -95,11 +110,20 @@ export function getAssetCategory(category: string): AssetCategory {
     const categories: Record<string, AssetCategory> = {
         characters: {
             spriteSheets: {
-                'player': '/SpiteSheets/characters/player.yaml'
+                'player': '/SpiteSheets/characters/player.yaml',
+                'skeleton': '/SpiteSheets/characters/skeleton.yaml',
+                'slime': '/SpiteSheets/characters/slime.yaml'
             },
             images: {
                 'skeleton': '/SpiteSheets/characters/skeleton.png',
-                'slime': '/SpiteSheets/characters/slime.png'
+                'slime': '/SpiteSheets/characters/slime.png',
+                'enemySheetBasic': '/SpiteSheets/characters/enemies/enemy_basic_sheet.png',
+                'enemySheetFast': '/SpiteSheets/characters/enemies/enemy_fast_sheet.png',
+                'enemySheetTank': '/SpiteSheets/characters/enemies/enemy_tank_sheet.png',
+                'enemySheetElite': '/SpiteSheets/characters/enemies/enemy_elite_sheet.png'
+            },
+            yaml: {
+                'enemySpritePack': '/SpiteSheets/characters/enemies/enemies_spritesheets.yaml'
             }
         },
         terrain: {

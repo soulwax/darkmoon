@@ -1,5 +1,4 @@
 // File: src/audio/AudioSystem.ts
-// Event-driven game audio using authored WAV files in Resources/Sounds.
 
 import { eventBus, GameEvents } from '../core/EventBus';
 

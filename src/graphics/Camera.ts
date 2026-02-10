@@ -25,6 +25,8 @@ export class Camera {
     shakeDuration: number;
     shakeOffset: Vector2;
     maxShakeIntensity: number;
+    punchOffset: Vector2;
+    punchDamping: number;
 
     constructor(viewportWidth: number, viewportHeight: number, config: {
         followSmoothing?: number;
@@ -78,6 +80,10 @@ export class Camera {
         this.shakeDuration = 0;
         this.shakeOffset = new Vector2(0, 0);
         this.maxShakeIntensity = config.maxShakeIntensity || 5;
+
+        // Camera punch (impulse that quickly eases back to center)
+        this.punchOffset = new Vector2(0, 0);
+        this.punchDamping = 16;
     }
 
     /**
@@ -151,6 +157,25 @@ export class Camera {
     }
 
     /**
+     * Trigger camera punch in a direction
+     * @param {number} dirX
+     * @param {number} dirY
+     * @param {number} intensity
+     */
+    punch(dirX: number, dirY: number, intensity: number = 5) {
+        if (!this.shakeEnabled) return;
+
+        const magnitude = Math.sqrt(dirX * dirX + dirY * dirY) || 1;
+        const nx = dirX / magnitude;
+        const ny = dirY / magnitude;
+        const clamped = Math.min(intensity, this.maxShakeIntensity * 2);
+
+        // Accumulate so repeated hits stack briefly.
+        this.punchOffset.x += nx * clamped;
+        this.punchOffset.y += ny * clamped;
+    }
+
+    /**
      * Update camera position
      * @param {number} deltaTime
      */
@@ -196,6 +221,11 @@ export class Camera {
             this.shakeOffset.set(0, 0);
         }
 
+        // Ease punch back to neutral.
+        const punchLerp = Math.min(1, deltaTime * this.punchDamping);
+        this.punchOffset.x = MathUtils.lerp(this.punchOffset.x, 0, punchLerp);
+        this.punchOffset.y = MathUtils.lerp(this.punchOffset.y, 0, punchLerp);
+
         // Clamp to bounds
         this._clampToBounds();
     }
@@ -231,8 +261,8 @@ export class Camera {
      */
     worldToScreen(worldX: number, worldY: number) {
         return {
-            x: (worldX - this.position.x - this.shakeOffset.x) * this.zoom,
-            y: (worldY - this.position.y - this.shakeOffset.y) * this.zoom
+            x: (worldX - this.position.x - this.shakeOffset.x - this.punchOffset.x) * this.zoom,
+            y: (worldY - this.position.y - this.shakeOffset.y - this.punchOffset.y) * this.zoom
         };
     }
 
@@ -244,8 +274,8 @@ export class Camera {
      */
     screenToWorld(screenX: number, screenY: number) {
         return {
-            x: screenX / this.zoom + this.position.x + this.shakeOffset.x,
-            y: screenY / this.zoom + this.position.y + this.shakeOffset.y
+            x: screenX / this.zoom + this.position.x + this.shakeOffset.x + this.punchOffset.x,
+            y: screenY / this.zoom + this.position.y + this.shakeOffset.y + this.punchOffset.y
         };
     }
 
@@ -274,8 +304,8 @@ export class Camera {
     applyTransform(ctx: CanvasRenderingContext2D) {
         ctx.save();
         ctx.scale(this.zoom, this.zoom);
-        const tx = -this.position.x - this.shakeOffset.x;
-        const ty = -this.position.y - this.shakeOffset.y;
+        const tx = -this.position.x - this.shakeOffset.x - this.punchOffset.x;
+        const ty = -this.position.y - this.shakeOffset.y - this.punchOffset.y;
 
         // Pixel-snap camera translation in screen space to avoid subpixel seams between tiles/sprites.
         // Convert to screen pixels, round, then convert back to world units.

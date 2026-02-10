@@ -2,12 +2,16 @@
 
 export interface DrawOptions {
     scale?: number;
+    scaleX?: number;
+    scaleY?: number;
     flipX?: boolean;
     flipY?: boolean;
     alpha?: number;
     rotation?: number;
     originX?: number;
     originY?: number;
+    tint?: string | null;
+    tintAlpha?: number;
     sheetFrameIndex?: number;
 }
 
@@ -255,19 +259,23 @@ export class SpriteSheet {
     _drawFrame(ctx: CanvasRenderingContext2D, frame: AnimationFrame, x: number, y: number, options: DrawOptions) {
         const {
             scale = 1,
+            scaleX = scale,
+            scaleY = scale,
             flipX = false,
             flipY = false,
             alpha = 1,
             rotation = 0,
             originX = 0.5,
             originY = 0.5,
+            tint = null,
+            tintAlpha = 0.5,
             sheetFrameIndex = 0
         } = options;
 
         const sourceImage = this.images?.[sheetFrameIndex] || this.image;
 
-        const width = frame.width * scale;
-        const height = frame.height * scale;
+        const width = frame.width * scaleX;
+        const height = frame.height * scaleY;
 
         ctx.save();
 
@@ -298,6 +306,15 @@ export class SpriteSheet {
             -height * originY,          // Dest Y (centered)
             width, height               // Dest size
         );
+
+        // Optional tint overlay (useful for hit flashes, status effects).
+        if (tint) {
+            const prevAlpha = ctx.globalAlpha;
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.globalAlpha = prevAlpha * Math.max(0, Math.min(1, tintAlpha));
+            ctx.fillStyle = tint;
+            ctx.fillRect(-width * originX, -height * originY, width, height);
+        }
 
         ctx.restore();
     }

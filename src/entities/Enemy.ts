@@ -1,6 +1,7 @@
 // File: src/entities/Enemy.ts
 
 import { Entity } from '../ecs/Entity';
+import { AnimatorComponent } from '../ecs/components/AnimatorComponent';
 import { ColliderComponent } from '../ecs/components/ColliderComponent';
 import { HealthComponent } from '../ecs/components/HealthComponent';
 import { MovementComponent } from '../ecs/components/MovementComponent';
@@ -8,6 +9,7 @@ import { eventBus, GameEvents } from '../core/EventBus';
 import { MathUtils, type Direction } from '../core/Math';
 import type { GameConfig } from '../config/GameConfig';
 import type { Camera } from '../graphics/Camera';
+import type { SpriteSheet } from '../assets/SpriteSheet';
 
 // Enemy type definitions with sprite info
 export interface EnemyTypeDefinition {
@@ -25,6 +27,9 @@ export interface EnemyTypeDefinition {
     animFrames?: number;
     animSpeed?: number;
     knockbackResist?: number;
+    spriteSheet?: string;
+    spriteScale?: number;
+    spriteOffsetY?: number;
 }
 
 export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
@@ -37,12 +42,15 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         color: '#d4c4a8',
         size: 14,
         sprite: 'skeleton',
-        frameWidth: 64,
-        frameHeight: 64,
+        frameWidth: 32,
+        frameHeight: 48,
         rows: { down: 0, left: 1, right: 2, up: 3 },
         animFrames: 9,
         animSpeed: 10,
-        knockbackResist: 0.8
+        knockbackResist: 0.8,
+        spriteSheet: 'skeleton',
+        spriteScale: 1.05,
+        spriteOffsetY: 2
     },
     slime: {
         name: 'Slime',
@@ -56,9 +64,12 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         frameWidth: 32,
         frameHeight: 32,
         rows: { down: 0, left: 1, right: 2, up: 3 },
-        animFrames: 4,
+        animFrames: 7,
         animSpeed: 6,
-        knockbackResist: 0.5
+        knockbackResist: 0.5,
+        spriteSheet: 'slime',
+        spriteScale: 1.1,
+        spriteOffsetY: 1
     },
     basic: {
         name: 'Basic',
@@ -68,7 +79,16 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         xpValue: 5,
         color: '#f44',
         size: 12,
-        knockbackResist: 1.0
+        sprite: 'basic',
+        frameWidth: 32,
+        frameHeight: 48,
+        rows: { down: 0, left: 1, right: 2, up: 3 },
+        animFrames: 9,
+        animSpeed: 9,
+        knockbackResist: 1.0,
+        spriteSheet: 'basic',
+        spriteScale: 1.0,
+        spriteOffsetY: 2
     },
     fast: {
         name: 'Fast',
@@ -78,7 +98,16 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         xpValue: 8,
         color: '#4f4',
         size: 10,
-        knockbackResist: 1.2
+        sprite: 'fast',
+        frameWidth: 32,
+        frameHeight: 32,
+        rows: { down: 0, left: 1, right: 2, up: 3 },
+        animFrames: 7,
+        animSpeed: 12,
+        knockbackResist: 1.2,
+        spriteSheet: 'fast',
+        spriteScale: 0.95,
+        spriteOffsetY: 1
     },
     tank: {
         name: 'Tank',
@@ -88,7 +117,16 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         xpValue: 15,
         color: '#44f',
         size: 18,
-        knockbackResist: 0.4
+        sprite: 'tank',
+        frameWidth: 32,
+        frameHeight: 48,
+        rows: { down: 0, left: 1, right: 2, up: 3 },
+        animFrames: 9,
+        animSpeed: 7,
+        knockbackResist: 0.4,
+        spriteSheet: 'tank',
+        spriteScale: 1.18,
+        spriteOffsetY: 2
     },
     elite: {
         name: 'Elite',
@@ -98,7 +136,16 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         xpValue: 25,
         color: '#f4f',
         size: 16,
-        knockbackResist: 0.6
+        sprite: 'elite',
+        frameWidth: 32,
+        frameHeight: 48,
+        rows: { down: 0, left: 1, right: 2, up: 3 },
+        animFrames: 9,
+        animSpeed: 11,
+        knockbackResist: 0.6,
+        spriteSheet: 'elite',
+        spriteScale: 1.12,
+        spriteOffsetY: 2
     }
 };
 
@@ -111,6 +158,9 @@ export class Enemy extends Entity {
     size: number;
     knockbackResist: number;
     spriteImage: HTMLImageElement | null;
+    spriteSheet: SpriteSheet | null;
+    spriteScale: number;
+    spriteOffsetY: number;
     frameWidth: number;
     frameHeight: number;
     animFrames: number;
@@ -129,7 +179,14 @@ export class Enemy extends Entity {
     hitFlashTimer: number;
     squashTimer: number;
 
-    constructor(x: number, y: number, type: string = 'basic', config: GameConfig, spriteImage: HTMLImageElement | null = null) {
+    constructor(
+        x: number,
+        y: number,
+        type: string = 'basic',
+        config: GameConfig,
+        spriteImage: HTMLImageElement | null = null,
+        spriteSheet: SpriteSheet | null = null
+    ) {
         super(x, y);
 
         this.addTag('enemy');
@@ -148,6 +205,9 @@ export class Enemy extends Entity {
 
         // Sprite properties
         this.spriteImage = spriteImage;
+        this.spriteSheet = spriteSheet;
+        this.spriteScale = typeDef.spriteScale || 1;
+        this.spriteOffsetY = typeDef.spriteOffsetY || 0;
         this.frameWidth = typeDef.frameWidth || 32;
         this.frameHeight = typeDef.frameHeight || 32;
         this.animFrames = typeDef.animFrames || 4;
@@ -178,6 +238,14 @@ export class Enemy extends Entity {
 
         // Setup components
         this._setupComponents(typeDef, config);
+
+        // Animator component for sprite-sheet enemies.
+        if (this.spriteSheet) {
+            const animator = new AnimatorComponent(this.spriteSheet);
+            animator.setState('run', 'down');
+            animator.setSpeed(Math.max(0.6, this.animSpeed / 10));
+            this.addComponent(animator);
+        }
     }
 
     _setupComponents(typeDef: EnemyTypeDefinition, config: GameConfig) {
@@ -358,9 +426,10 @@ export class Enemy extends Entity {
             this.isKnockedBack = false;
         }
 
+        const movement = this.getComponent<MovementComponent>('MovementComponent');
+
         // Chase target (only if not stunned)
         if (this.target && !this.target.destroyed && this.knockbackStunTime <= 0) {
-            const movement = this.getComponent<MovementComponent>('MovementComponent');
             if (movement) {
                 const dx = this.target.x - this.x;
                 const dy = this.target.y - this.y;
@@ -379,31 +448,35 @@ export class Enemy extends Entity {
             }
         } else if (this.knockbackStunTime > 0) {
             // Stop movement input during stun
-            const movement = this.getComponent<MovementComponent>('MovementComponent');
             if (movement) {
                 movement.setInput(0, 0);
             }
         }
 
-        // Update animation
-        this.animTimer += deltaTime * this.animSpeed;
-        if (this.animTimer >= 1) {
-            this.animTimer -= 1;
-            this.currentFrame = (this.currentFrame + 1) % this.animFrames;
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        if (animator) {
+            const moving = movement?.isMoving() || false;
+            animator.setState(moving ? 'run' : 'idle', this.facingDirection);
+            animator.setSpeed(Math.max(0.6, this.animSpeed / 10));
+        } else {
+            // Legacy frame animation fallback (image-sheet without YAML).
+            this.animTimer += deltaTime * this.animSpeed;
+            if (this.animTimer >= 1) {
+                this.animTimer -= 1;
+                this.currentFrame = (this.currentFrame + 1) % this.animFrames;
+            }
         }
 
         super.update(deltaTime);
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
-        // Draw shadow
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-        ctx.beginPath();
-        ctx.ellipse(this.x, this.y + this.size, this.size * 0.8, this.size * 0.4, 0, 0, Math.PI * 2);
-        ctx.fill();
+        this._drawShadow(ctx);
 
-        // Try to draw sprite
-        if (this.spriteImage && this.spriteImage.complete) {
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        if (animator && this.spriteSheet) {
+            this._drawAnimatedSprite(ctx, animator);
+        } else if (this.spriteImage && this.spriteImage.complete) {
             this._drawSprite(ctx);
         } else {
             this._drawFallback(ctx);
@@ -414,6 +487,46 @@ export class Enemy extends Entity {
         if (health && !health.isFullHealth()) {
             this._drawHealthBar(ctx, health);
         }
+    }
+
+    _drawShadow(ctx: CanvasRenderingContext2D) {
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        const frame = animator?.animator.getCurrentFrameData();
+        const frameWidth = frame?.width ? frame.width * this.spriteScale * Math.abs(this.scaleX) : this.size * 2;
+        const frameHeight = frame?.height ? frame.height * this.spriteScale * Math.abs(this.scaleY) : this.size * 2;
+
+        const shadowRadiusX = Math.max(this.size * 0.7, frameWidth * 0.23);
+        const shadowRadiusY = Math.max(this.size * 0.28, frameHeight * 0.1);
+        const shadowY = this.y + Math.max(this.size * 0.7, frameHeight * 0.25);
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.beginPath();
+        ctx.ellipse(this.x, shadowY, shadowRadiusX, shadowRadiusY, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    _drawAnimatedSprite(ctx: CanvasRenderingContext2D, animator: AnimatorComponent) {
+        if (!this.spriteSheet) return;
+        const animationName = animator.animator.getAnimationName();
+        if (!animationName) return;
+
+        this.spriteSheet.drawFrame(
+            ctx,
+            animationName,
+            animator.animator.currentFrame,
+            this.x,
+            this.y + this.spriteOffsetY,
+            {
+                flipX: animator.animator.flipX,
+                flipY: animator.animator.flipY,
+                rotation: this.rotation,
+                scaleX: this.spriteScale * this.scaleX,
+                scaleY: this.spriteScale * this.scaleY,
+                alpha: 1,
+                tint: this.hitFlash ? '#ffffff' : null,
+                tintAlpha: this.hitFlash ? 0.55 : 0
+            }
+        );
     }
 
     /**
@@ -431,12 +544,6 @@ export class Enemy extends Entity {
         // Apply squash/stretch
         ctx.scale(this.scaleX, this.scaleY);
 
-        // Hit flash effect
-        if (this.hitFlash) {
-            ctx.globalAlpha = 0.7;
-            ctx.filter = 'brightness(2)';
-        }
-
         // Draw sprite centered
         const drawWidth = this.frameWidth;
         const drawHeight = this.frameHeight;
@@ -445,6 +552,12 @@ export class Enemy extends Entity {
             srcX, srcY, this.frameWidth, this.frameHeight,
             -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight
         );
+
+        if (this.hitFlash) {
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillRect(-drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight);
+        }
 
         ctx.restore();
     }

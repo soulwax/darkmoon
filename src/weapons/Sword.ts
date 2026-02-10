@@ -249,8 +249,8 @@ export class Sword extends Weapon {
         this.hitThisSwing.add(enemy);
 
         // Apply damage
-        const mult = typeof this.owner.getDamageMultiplier === 'function' ? this.owner.getDamageMultiplier() : (this.owner.stats?.damageMultiplier || 1);
-        const damage = Math.floor(this.damage * mult);
+        const damageCtx = this.getDamageContext(this.damage, 0.06);
+        const damage = damageCtx.damage;
         enemy.takeDamage(damage, this.owner);
 
         // Apply knockback

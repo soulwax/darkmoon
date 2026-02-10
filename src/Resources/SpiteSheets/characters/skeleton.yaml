@@ -1,0 +1,90 @@
+# File: src/Resources/SpiteSheets/characters/skeleton.yaml
+
+meta:
+  tile_size: 48
+  frame_rate: 10
+  loop: true
+  file:
+    - skeleton.png
+
+tiles:
+  - id: 0
+    direction: "down_running"
+    frame_rate: 10
+    loop: true
+    frame_list:
+      - { x: 0, y: 0, width: 32, height: 48 }
+      - { x: 32, y: 0, width: 32, height: 48 }
+      - { x: 64, y: 0, width: 32, height: 48 }
+      - { x: 96, y: 0, width: 32, height: 48 }
+      - { x: 128, y: 0, width: 32, height: 48 }
+      - { x: 160, y: 0, width: 32, height: 48 }
+      - { x: 192, y: 0, width: 32, height: 48 }
+      - { x: 224, y: 0, width: 32, height: 48 }
+      - { x: 256, y: 0, width: 32, height: 48 }
+  - id: 1
+    direction: "left_running"
+    frame_rate: 10
+    loop: true
+    frame_list:
+      - { x: 0, y: 48, width: 32, height: 48 }
+      - { x: 32, y: 48, width: 32, height: 48 }
+      - { x: 64, y: 48, width: 32, height: 48 }
+      - { x: 96, y: 48, width: 32, height: 48 }
+      - { x: 128, y: 48, width: 32, height: 48 }
+      - { x: 160, y: 48, width: 32, height: 48 }
+      - { x: 192, y: 48, width: 32, height: 48 }
+      - { x: 224, y: 48, width: 32, height: 48 }
+      - { x: 256, y: 48, width: 32, height: 48 }
+  - id: 2
+    direction: "right_running"
+    frame_rate: 10
+    loop: true
+    frame_list:
+      - { x: 0, y: 96, width: 32, height: 48 }
+      - { x: 32, y: 96, width: 32, height: 48 }
+      - { x: 64, y: 96, width: 32, height: 48 }
+      - { x: 96, y: 96, width: 32, height: 48 }
+      - { x: 128, y: 96, width: 32, height: 48 }
+      - { x: 160, y: 96, width: 32, height: 48 }
+      - { x: 192, y: 96, width: 32, height: 48 }
+      - { x: 224, y: 96, width: 32, height: 48 }
+      - { x: 256, y: 96, width: 32, height: 48 }
+  - id: 3
+    direction: "up_running"
+    frame_rate: 10
+    loop: true
+    frame_list:
+      - { x: 0, y: 144, width: 32, height: 48 }
+      - { x: 32, y: 144, width: 32, height: 48 }
+      - { x: 64, y: 144, width: 32, height: 48 }
+      - { x: 96, y: 144, width: 32, height: 48 }
+      - { x: 128, y: 144, width: 32, height: 48 }
+      - { x: 160, y: 144, width: 32, height: 48 }
+      - { x: 192, y: 144, width: 32, height: 48 }
+      - { x: 224, y: 144, width: 32, height: 48 }
+      - { x: 256, y: 144, width: 32, height: 48 }
+  - id: 4
+    direction: "down_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 0, width: 32, height: 48 }
+  - id: 5
+    direction: "left_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 48, width: 32, height: 48 }
+  - id: 6
+    direction: "right_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 96, width: 32, height: 48 }
+  - id: 7
+    direction: "up_idle"
+    frame_rate: 4
+    loop: true
+    frame_list:
+      - { x: 0, y: 144, width: 32, height: 48 }
