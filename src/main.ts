@@ -200,10 +200,12 @@ class Application {
         window.addEventListener('pointerdown', unlockAudio, { once: true });
         window.addEventListener('keydown', unlockAudio, { once: true });
 
-        const restartFromGameOver = () => {
+        const restartGame = () => {
             this.audioSystem?.playUiSelect();
             void this.audioSystem?.unlock();
+            this.hidePauseOverlay();
             this.hideGameOver();
+            this.hideMenu();
             eventBus.emit(GameEvents.GAME_RESTART);
         };
 
@@ -221,13 +223,13 @@ class Application {
         // Restart button
         const restartButton = document.getElementById('restartButton');
         if (restartButton) {
-            restartButton.addEventListener('click', restartFromGameOver);
+            restartButton.addEventListener('click', restartGame);
         }
 
         // In-game restart button
         const hudRestartButton = document.getElementById('hudRestartButton');
         if (hudRestartButton) {
-            hudRestartButton.addEventListener('click', restartFromGameOver);
+            hudRestartButton.addEventListener('click', restartGame);
         }
 
         // Listen for game over
@@ -259,6 +261,7 @@ class Application {
 
         eventBus.on(GameEvents.GAME_RESTART, () => {
             this.hidePauseOverlay();
+            this.hideGameOver();
         });
 
         // Allow keyboard restart directly from death screen.
@@ -266,7 +269,7 @@ class Application {
             if (!this.isGameOverVisible()) return;
             if (e.code === 'KeyR' || e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
-                restartFromGameOver();
+                restartGame();
             }
         });
 
@@ -418,6 +421,7 @@ class Application {
     hideGameOver() {
         const gameOver = document.getElementById('gameOverScreen');
         if (gameOver) {
+            gameOver.classList.add('hidden');
             gameOver.style.display = 'none';
         }
     }

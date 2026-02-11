@@ -804,6 +804,26 @@ export class GameScene extends Scene {
         const proximityDamage = this.player.getProximityAutoAttackDamage();
         const knockbackStrength = this.player.getProximityAutoAttackKnockback();
         const contactInterval = this.player.getProximityContactInterval();
+        const playerCollider = this.player.getComponent<ColliderComponent>('ColliderComponent');
+        const enemyCollider = enemy.getComponent<ColliderComponent>('ColliderComponent');
+
+        // Require meaningful overlap so "near misses" don't count as contact hits.
+        if (
+            playerCollider?.type === 'circle' &&
+            enemyCollider?.type === 'circle'
+        ) {
+            const playerCenterX = this.player.x + playerCollider.offsetX;
+            const playerCenterY = this.player.y + playerCollider.offsetY;
+            const enemyCenterX = enemy.x + enemyCollider.offsetX;
+            const enemyCenterY = enemy.y + enemyCollider.offsetY;
+            const dx = enemyCenterX - playerCenterX;
+            const dy = enemyCenterY - playerCenterY;
+            const contactRadius = Math.max(6, playerCollider.radius + enemyCollider.radius - 6);
+
+            if ((dx * dx + dy * dy) > (contactRadius * contactRadius)) {
+                return;
+            }
+        }
 
         enemy.takeDamage(proximityDamage, this.player);
 
@@ -813,13 +833,14 @@ export class GameScene extends Scene {
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
             enemy.applyKnockback((dx / dist) * knockbackStrength, (dy / dist) * knockbackStrength);
 
-            const armorMult = this.player.getDamageTakenMultiplier();
-            const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
-            const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
+            const health = this.player.getComponent<HealthComponent>('HealthComponent');
+            // While invulnerable, ignore contact damage entirely (including shield drain).
+            if (!health?.invulnerable) {
+                const armorMult = this.player.getDamageTakenMultiplier();
+                const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
+                const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
 
-            if (remainingDamage > 0) {
-                const health = this.player.getComponent<HealthComponent>('HealthComponent');
-                if (health && !health.invulnerable) {
+                if (remainingDamage > 0 && health) {
                     health.takeDamage(remainingDamage, enemy);
                 }
             }

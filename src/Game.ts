@@ -167,7 +167,11 @@ export class Game {
 
         // Reset current scene
         if (this.sceneManager) {
-            this.sceneManager.restart();
+            if (this.sceneManager.getCurrent()) {
+                this.sceneManager.restart();
+            } else {
+                this.sceneManager.switchTo('game', {}, true, 'wipe');
+            }
         }
 
         if (this.gameLoop.isRunning()) {

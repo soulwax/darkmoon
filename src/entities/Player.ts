@@ -610,9 +610,9 @@ export class Player extends Entity {
         ctx.ellipse(this.x, this.y + 20, 16, 8, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw entity (animator will handle sprite if available)
+        // Draw the sprite directly to avoid rendering non-visual components (e.g. collider debug circle).
         if (animator) {
-            super.draw(ctx, camera);
+            animator.draw(ctx, camera);
         } else {
             // Fallback: draw a simple character shape
             this._drawFallback(ctx, movement);
@@ -647,20 +647,26 @@ export class Player extends Entity {
         if (maxShield <= 0) return;
 
         const shieldRatio = this.getShieldPercent();
+        const shouldDisplay =
+            shieldRatio < 0.995 ||
+            this.shieldImpactTimer > 0.01 ||
+            this.shieldRechargeDelayTimer > 0.01;
+        if (!shouldDisplay) return;
+
         const pulse = 0.9 + Math.sin(Date.now() / 200) * 0.1;
         const impactBoost = this.shieldImpactTimer > 0 ? 0.18 + this.shieldImpactTimer * 0.4 : 0;
-        const alpha = Math.min(0.45, (0.07 + shieldRatio * 0.28) * pulse + impactBoost);
+        const alpha = Math.min(0.35, (0.03 + shieldRatio * 0.18) * pulse + impactBoost);
         if (alpha <= 0.01) return;
 
-        const radius = 21 + shieldRatio * 9;
-        const gradient = ctx.createRadialGradient(this.x, this.y, radius * 0.2, this.x, this.y, radius * 1.35);
-        gradient.addColorStop(0, `rgba(160, 215, 255, ${alpha * 0.15})`);
-        gradient.addColorStop(0.7, `rgba(110, 190, 255, ${alpha * 0.4})`);
+        const radius = 16 + shieldRatio * 6;
+        const gradient = ctx.createRadialGradient(this.x, this.y, radius * 0.2, this.x, this.y, radius * 1.2);
+        gradient.addColorStop(0, `rgba(160, 215, 255, ${alpha * 0.12})`);
+        gradient.addColorStop(0.7, `rgba(110, 190, 255, ${alpha * 0.28})`);
         gradient.addColorStop(1, 'rgba(90, 165, 235, 0)');
 
         ctx.fillStyle = gradient;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, radius * 1.35, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, radius * 1.2, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.strokeStyle = `rgba(165, 225, 255, ${alpha * 0.95})`;
