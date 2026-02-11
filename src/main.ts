@@ -226,12 +226,6 @@ class Application {
             restartButton.addEventListener('click', restartGame);
         }
 
-        // In-game restart button
-        const hudRestartButton = document.getElementById('hudRestartButton');
-        if (hudRestartButton) {
-            hudRestartButton.addEventListener('click', restartGame);
-        }
-
         // Listen for game over
         eventBus.on(GameEvents.GAME_OVER, (data: GameOverData) => {
             this.hidePauseOverlay();

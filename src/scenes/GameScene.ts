@@ -884,12 +884,6 @@ export class GameScene extends Scene {
         // Update input (even if a level-up overlay is showing)
         this.inputManager.update();
 
-        // Restart hotkey
-        if (this.inputManager.isActionPressed('restart')) {
-            eventBus.emit(GameEvents.GAME_RESTART);
-            return;
-        }
-
         if (this.showingLevelUp) return;
 
         if (this.weaponShakeCooldown > 0) {

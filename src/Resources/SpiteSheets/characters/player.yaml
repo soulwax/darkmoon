@@ -29,7 +29,7 @@ tiles:
   start_x: 0
   start_y: 0
   end_frame: 0
-  direction: "left_running"
+  direction: "right_running"
   frame_rate: 0
   loop: false
   frame_list:
@@ -60,7 +60,7 @@ tiles:
   start_x: 0
   start_y: 0
   end_frame: 0
-  direction: "right_running"
+  direction: "left_running"
   frame_rate: 0
   loop: false
   frame_list:
