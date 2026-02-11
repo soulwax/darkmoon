@@ -73,6 +73,7 @@ export class GameScene extends Scene {
     playerContactDamageCooldown: number;
     playerContactDamageInterval: number;
     gameOverTriggered: boolean;
+    playerSpawnInvulnerabilityTimer: number;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -105,6 +106,7 @@ export class GameScene extends Scene {
         this.playerContactDamageCooldown = 0;
         this.playerContactDamageInterval = 0.6;
         this.gameOverTriggered = false;
+        this.playerSpawnInvulnerabilityTimer = 0;
 
         this._setupEventListeners();
     }
@@ -207,14 +209,67 @@ export class GameScene extends Scene {
         if (this.gameOverTriggered) return;
         this.gameOverTriggered = true;
 
-        eventBus.emit(GameEvents.GAME_OVER, {
+        const payload = {
             time: this.gameTime,
             kills: this.killCount,
             level: this.player?.level || 1,
             damageDealt: this.damageDealt,
             gemsCollected: this.gemsCollected,
             message
-        });
+        };
+
+        // End the game loop deterministically.
+        this.game.endGame();
+        eventBus.emit(GameEvents.GAME_OVER, payload);
+        this._forceShowGameOverOverlay(payload);
+    }
+
+    _forceShowGameOverOverlay(data: {
+        time?: number;
+        kills?: number;
+        level?: number;
+        damageDealt?: number;
+        gemsCollected?: number;
+        message?: string;
+    }) {
+        const gameOver = document.getElementById('gameOverScreen');
+        if (gameOver) {
+            gameOver.classList.remove('hidden');
+            gameOver.style.display = 'flex';
+        }
+
+        const timeEl = document.getElementById('finalTime');
+        const killsEl = document.getElementById('finalKills');
+        const levelEl = document.getElementById('finalLevel');
+        const damageEl = document.getElementById('finalDamage');
+        const gemsEl = document.getElementById('finalGems');
+        const messageEl = document.getElementById('deathMessage');
+
+        if (timeEl && data.time !== undefined) {
+            const minutes = Math.floor(data.time / 60);
+            const seconds = Math.floor(data.time % 60);
+            timeEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        if (killsEl && data.kills !== undefined) {
+            killsEl.textContent = data.kills.toString();
+        }
+
+        if (levelEl) {
+            levelEl.textContent = (data.level ?? 1).toString();
+        }
+
+        if (damageEl) {
+            damageEl.textContent = Math.floor(data.damageDealt ?? 0).toLocaleString();
+        }
+
+        if (gemsEl) {
+            gemsEl.textContent = (data.gemsCollected ?? 0).toLocaleString();
+        }
+
+        if (messageEl) {
+            messageEl.textContent = data.message || 'You died.';
+        }
     }
 
     onEnter(data: Record<string, unknown> = {}) {
@@ -286,6 +341,7 @@ export class GameScene extends Scene {
         this.enemyContactCooldowns.clear();
         this.playerContactDamageCooldown = 0;
         this.gameOverTriggered = false;
+        this.playerSpawnInvulnerabilityTimer = 1.2;
     }
 
     onExit() {
@@ -299,6 +355,7 @@ export class GameScene extends Scene {
         this.enemyContactCooldowns.clear();
         this.playerContactDamageCooldown = 0;
         this.gameOverTriggered = false;
+        this.playerSpawnInvulnerabilityTimer = 0;
     }
 
     _generateWorld() {
@@ -817,6 +874,7 @@ export class GameScene extends Scene {
     _resolvePlayerEnemyContact(enemy: Enemy) {
         if (enemy.destroyed) return;
         if ((this.enemyContactCooldowns.get(enemy.id) || 0) > 0) return;
+        if (this.playerSpawnInvulnerabilityTimer > 0) return;
 
         const proximityDamage = this.player.getProximityAutoAttackDamage();
         const knockbackStrength = this.player.getProximityAutoAttackKnockback();
@@ -920,6 +978,9 @@ export class GameScene extends Scene {
         }
         if (this.playerContactDamageCooldown > 0) {
             this.playerContactDamageCooldown = Math.max(0, this.playerContactDamageCooldown - deltaTime);
+        }
+        if (this.playerSpawnInvulnerabilityTimer > 0) {
+            this.playerSpawnInvulnerabilityTimer = Math.max(0, this.playerSpawnInvulnerabilityTimer - deltaTime);
         }
 
         // Handle pause
