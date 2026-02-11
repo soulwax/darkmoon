@@ -232,6 +232,17 @@ class Application {
             this.showGameOver(data);
         });
 
+        // Safety fallback: if a death event occurs without a game-over event, force one.
+        eventBus.on(GameEvents.PLAYER_DIED, () => {
+            queueMicrotask(() => {
+                if (!this.isGameOverVisible()) {
+                    eventBus.emit(GameEvents.GAME_OVER, {
+                        message: 'You were overwhelmed. Start again?'
+                    });
+                }
+            });
+        });
+
         // Pause overlay controls
         const pauseResumeButton = document.getElementById('pauseResumeButton');
         if (pauseResumeButton) {

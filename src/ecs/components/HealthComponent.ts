@@ -59,10 +59,16 @@ export class HealthComponent extends Component {
         }
 
         this.health = Math.max(0, this.health - amount);
+        const lethal = this.health <= 0;
 
-        // Trigger invulnerability
-        this.invulnerable = true;
-        this.invulnerabilityTimer = this.invulnerabilityDuration;
+        // Trigger invulnerability only when the hit is non-lethal.
+        if (!lethal) {
+            this.invulnerable = true;
+            this.invulnerabilityTimer = this.invulnerabilityDuration;
+        } else {
+            this.invulnerable = false;
+            this.invulnerabilityTimer = 0;
+        }
 
         // Trigger damage flash
         this.damageFlash = true;
@@ -142,6 +148,8 @@ export class HealthComponent extends Component {
 
         this.isDead = true;
         this.health = 0;
+        this.invulnerable = false;
+        this.invulnerabilityTimer = 0;
 
         if (this._isPlayer()) {
             eventBus.emit(GameEvents.PLAYER_DIED, {
@@ -201,6 +209,7 @@ export class HealthComponent extends Component {
      * Check if entity should be visible (for invulnerability flashing)
      */
     isVisible() {
+        if (this.isDead) return true;
         if (!this.invulnerable) return true;
         // Flash every 0.1 seconds
         return Math.floor(this.invulnerabilityTimer * 10) % 2 === 0;

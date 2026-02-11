@@ -70,6 +70,9 @@ export class GameScene extends Scene {
     nearestChest: WorldChest | null;
     chestInteractRange: number;
     enemyContactCooldowns: Map<number, number>;
+    playerContactDamageCooldown: number;
+    playerContactDamageInterval: number;
+    gameOverTriggered: boolean;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -99,6 +102,9 @@ export class GameScene extends Scene {
         this.nearestChest = null;
         this.chestInteractRange = 36;
         this.enemyContactCooldowns = new Map();
+        this.playerContactDamageCooldown = 0;
+        this.playerContactDamageInterval = 0.6;
+        this.gameOverTriggered = false;
 
         this._setupEventListeners();
     }
@@ -193,14 +199,21 @@ export class GameScene extends Scene {
         });
 
         eventBus.on(GameEvents.PLAYER_DIED, () => {
-            eventBus.emit(GameEvents.GAME_OVER, {
-                time: this.gameTime,
-                kills: this.killCount,
-                level: this.player?.level || 1,
-                damageDealt: this.damageDealt,
-                gemsCollected: this.gemsCollected,
-                message: 'You were overwhelmed. Rise again?'
-            });
+            this._emitGameOver('You were overwhelmed. Start again?');
+        });
+    }
+
+    _emitGameOver(message: string = 'You were overwhelmed. Start again?') {
+        if (this.gameOverTriggered) return;
+        this.gameOverTriggered = true;
+
+        eventBus.emit(GameEvents.GAME_OVER, {
+            time: this.gameTime,
+            kills: this.killCount,
+            level: this.player?.level || 1,
+            damageDealt: this.damageDealt,
+            gemsCollected: this.gemsCollected,
+            message
         });
     }
 
@@ -271,6 +284,8 @@ export class GameScene extends Scene {
         this.showingLevelUp = false;
         this.nearestChest = null;
         this.enemyContactCooldowns.clear();
+        this.playerContactDamageCooldown = 0;
+        this.gameOverTriggered = false;
     }
 
     onExit() {
@@ -282,6 +297,8 @@ export class GameScene extends Scene {
         this.worldChests = [];
         this.nearestChest = null;
         this.enemyContactCooldowns.clear();
+        this.playerContactDamageCooldown = 0;
+        this.gameOverTriggered = false;
     }
 
     _generateWorld() {
@@ -834,13 +851,19 @@ export class GameScene extends Scene {
             enemy.applyKnockback((dx / dist) * knockbackStrength, (dy / dist) * knockbackStrength);
 
             const health = this.player.getComponent<HealthComponent>('HealthComponent');
-            // While invulnerable, ignore contact damage entirely (including shield drain).
-            if (!health?.invulnerable) {
+            // Global hit-gate: swarms shouldn't apply full stacked damage in a single frame.
+            if (
+                this.playerContactDamageCooldown <= 0 &&
+                health &&
+                !health.isDead &&
+                !health.invulnerable
+            ) {
                 const armorMult = this.player.getDamageTakenMultiplier();
                 const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
                 const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
+                this.playerContactDamageCooldown = this.playerContactDamageInterval;
 
-                if (remainingDamage > 0 && health) {
+                if (remainingDamage > 0) {
                     health.takeDamage(remainingDamage, enemy);
                 }
             }
@@ -884,10 +907,19 @@ export class GameScene extends Scene {
         // Update input (even if a level-up overlay is showing)
         this.inputManager.update();
 
+        const health = this.player.getComponent<HealthComponent>('HealthComponent');
+        if (health?.isDead) {
+            this._emitGameOver('You were overwhelmed. Start again?');
+            return;
+        }
+
         if (this.showingLevelUp) return;
 
         if (this.weaponShakeCooldown > 0) {
             this.weaponShakeCooldown -= deltaTime;
+        }
+        if (this.playerContactDamageCooldown > 0) {
+            this.playerContactDamageCooldown = Math.max(0, this.playerContactDamageCooldown - deltaTime);
         }
 
         // Handle pause

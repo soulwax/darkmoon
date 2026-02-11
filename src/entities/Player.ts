@@ -598,13 +598,13 @@ export class Player extends Entity {
         const health = this.getComponent<HealthComponent>('HealthComponent');
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
         const movement = this.getComponent<MovementComponent>('MovementComponent');
-
-        // Skip drawing during invulnerability flash
-        if (health && !health.isVisible()) {
-            return;
-        }
+        const invulnBlink = health?.invulnerable
+            ? (Math.floor(Math.max(0, health.invulnerabilityTimer) * 14) % 2 === 0 ? 0.6 : 1)
+            : 1;
 
         // Draw shadow
+        ctx.save();
+        ctx.globalAlpha = invulnBlink;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
         ctx.beginPath();
         ctx.ellipse(this.x, this.y + 20, 16, 8, 0, 0, Math.PI * 2);
@@ -617,6 +617,7 @@ export class Player extends Entity {
             // Fallback: draw a simple character shape
             this._drawFallback(ctx, movement);
         }
+        ctx.restore();
 
         this._drawShieldOrb(ctx);
 
