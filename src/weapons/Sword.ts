@@ -32,7 +32,7 @@ export class Sword extends Weapon {
         this.maxLevel = 8;
 
         // Base stats
-        this.baseDamage = 25;
+        this.baseDamage = 12;
         this.baseKnockback = 300;
         this.baseCooldown = 0.8;
         this.baseRange = 60;

@@ -430,7 +430,7 @@ export class Player extends Entity {
     }
 
     getProximityAutoAttackDamage() {
-        const base = 30 + this.level * 2;
+        const base = 5 + this.level;
         return Math.max(1, Math.floor(base * this.getDamageMultiplier()));
     }
 
