@@ -43,7 +43,10 @@ export const DefaultConfig = {
         dashDuration: 0.2,
         dashCooldown: 0.8,
         pickupRange: 50,
-        invulnerabilityDuration: 0.75
+        invulnerabilityDuration: 0.75,
+        shieldCapacity: 45,
+        shieldRechargeRate: 16,
+        shieldRechargeDelay: 2.5
     },
 
     camera: {

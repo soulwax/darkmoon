@@ -132,6 +132,14 @@ export const StatUpgrades: Record<StatKey, StatUpgradeDefinition> = {
         value: 0.10,
         maxStacks: 5,
         rarity: 'rare'
+    },
+    shieldCapacity: {
+        name: 'Aegis Core',
+        description: '+25% shield capacity',
+        icon: '🛡️',
+        value: 0.25,
+        maxStacks: 6,
+        rarity: 'uncommon'
     }
 };
 

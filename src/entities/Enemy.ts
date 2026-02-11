@@ -177,6 +177,7 @@ export class Enemy extends Entity {
     knockbackStunTime: number;
     hitFlash: boolean;
     hitFlashTimer: number;
+    damageBlinkTimer: number;
     squashTimer: number;
 
     constructor(
@@ -232,6 +233,7 @@ export class Enemy extends Entity {
         // Visual state
         this.hitFlash = false;
         this.hitFlashTimer = 0;
+        this.damageBlinkTimer = 0;
         this.scaleX = 1;
         this.scaleY = 1;
         this.squashTimer = 0;
@@ -341,6 +343,7 @@ export class Enemy extends Entity {
     _onDamage(amount: number) {
         this.hitFlash = true;
         this.hitFlashTimer = 0.1;
+        this.damageBlinkTimer = 0.16;
 
         eventBus.emit(GameEvents.ENEMY_DAMAGED, {
             enemy: this,
@@ -391,6 +394,10 @@ export class Enemy extends Entity {
             if (this.hitFlashTimer <= 0) {
                 this.hitFlash = false;
             }
+        }
+
+        if (this.damageBlinkTimer > 0) {
+            this.damageBlinkTimer -= deltaTime;
         }
 
         // Update squash/stretch
@@ -471,6 +478,11 @@ export class Enemy extends Entity {
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {
+        if (this.damageBlinkTimer > 0) {
+            const blinkPhase = Math.floor(this.damageBlinkTimer * 32);
+            if (blinkPhase % 2 === 1) return;
+        }
+
         this._drawShadow(ctx);
 
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');

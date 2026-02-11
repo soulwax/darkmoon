@@ -2,6 +2,7 @@
 
 import { Scene } from './Scene';
 import { Player } from '../entities/Player';
+import type { Enemy } from '../entities/Enemy';
 import { Camera } from '../graphics/Camera';
 import { TileMap } from '../graphics/TileMap';
 import { InputManager } from '../input/InputManager';
@@ -17,8 +18,10 @@ import type { Game } from '../Game';
 import type { GameConfig } from '../config/GameConfig';
 import type { AssetLoader } from '../assets/AssetLoader';
 import type { SpriteSheet } from '../assets/SpriteSheet';
+import type { Component } from '../ecs/Component';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
 import type { ColliderComponent } from '../ecs/components/ColliderComponent';
+import type { MovementComponent } from '../ecs/components/MovementComponent';
 
 interface WorldChest {
     tileX: number;
@@ -37,8 +40,11 @@ interface TileCollisionEntity {
     y: number;
     vx: number;
     vy: number;
-    getComponent<T = unknown>(componentClass: string): T | null;
-    [key: string]: unknown;
+    knockbackVx?: number;
+    knockbackVy?: number;
+    getComponent<T extends Component>(
+        componentClass: string | (new (...args: never[]) => T)
+    ): T | null;
 }
 
 export class GameScene extends Scene {
@@ -63,6 +69,7 @@ export class GameScene extends Scene {
     worldChests: WorldChest[];
     nearestChest: WorldChest | null;
     chestInteractRange: number;
+    enemyContactCooldowns: Map<number, number>;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -91,6 +98,7 @@ export class GameScene extends Scene {
         this.worldChests = [];
         this.nearestChest = null;
         this.chestInteractRange = 36;
+        this.enemyContactCooldowns = new Map();
 
         this._setupEventListeners();
     }
@@ -262,6 +270,7 @@ export class GameScene extends Scene {
         this.weaponShakeCooldown = 0;
         this.showingLevelUp = false;
         this.nearestChest = null;
+        this.enemyContactCooldowns.clear();
     }
 
     onExit() {
@@ -272,6 +281,7 @@ export class GameScene extends Scene {
         this.particleSystem?.clear();
         this.worldChests = [];
         this.nearestChest = null;
+        this.enemyContactCooldowns.clear();
     }
 
     _generateWorld() {
@@ -702,7 +712,7 @@ export class GameScene extends Scene {
             }
         }
 
-        const movement = entity.getComponent<{ vx: number; vy: number }>('MovementComponent');
+        const movement = entity.getComponent<MovementComponent>('MovementComponent');
         if (!movement) return;
         if (axis === 'x') {
             movement.vx = 0;
@@ -762,6 +772,60 @@ export class GameScene extends Scene {
         ctx.fillText(label, chest.worldX, boxY + boxHeight - 3);
 
         ctx.restore();
+    }
+
+    _tickEnemyContactCooldowns(deltaTime: number, enemies: Enemy[]) {
+        const aliveEnemyIds = new Set<number>();
+        for (const enemy of enemies) {
+            if (!enemy.destroyed) {
+                aliveEnemyIds.add(enemy.id);
+            }
+        }
+
+        for (const [enemyId, cooldown] of this.enemyContactCooldowns.entries()) {
+            if (!aliveEnemyIds.has(enemyId)) {
+                this.enemyContactCooldowns.delete(enemyId);
+                continue;
+            }
+
+            const remaining = cooldown - deltaTime;
+            if (remaining <= 0) {
+                this.enemyContactCooldowns.delete(enemyId);
+            } else {
+                this.enemyContactCooldowns.set(enemyId, remaining);
+            }
+        }
+    }
+
+    _resolvePlayerEnemyContact(enemy: Enemy) {
+        if (enemy.destroyed) return;
+        if ((this.enemyContactCooldowns.get(enemy.id) || 0) > 0) return;
+
+        const proximityDamage = this.player.getProximityAutoAttackDamage();
+        const knockbackStrength = this.player.getProximityAutoAttackKnockback();
+        const contactInterval = this.player.getProximityContactInterval();
+
+        enemy.takeDamage(proximityDamage, this.player);
+
+        if (!enemy.destroyed) {
+            const dx = enemy.x - this.player.x;
+            const dy = enemy.y - this.player.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+            enemy.applyKnockback((dx / dist) * knockbackStrength, (dy / dist) * knockbackStrength);
+
+            const armorMult = this.player.getDamageTakenMultiplier();
+            const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
+            const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
+
+            if (remainingDamage > 0) {
+                const health = this.player.getComponent<HealthComponent>('HealthComponent');
+                if (health && !health.invulnerable) {
+                    health.takeDamage(remainingDamage, enemy);
+                }
+            }
+        }
+
+        this.enemyContactCooldowns.set(enemy.id, contactInterval);
     }
 
     _drawLowHealthVignette(ctx: CanvasRenderingContext2D) {
@@ -848,6 +912,7 @@ export class GameScene extends Scene {
                 this._resolveEntityTileCollision(enemy, previous.x, previous.y);
             }
         }
+        this._tickEnemyContactCooldowns(deltaTime, enemies);
 
         this.nearestChest = this._getNearestClosedChest(this.chestInteractRange);
         if (this.nearestChest && this.inputManager.isActionPressed('interact')) {
@@ -858,15 +923,7 @@ export class GameScene extends Scene {
         // Check player-enemy collisions
         for (const enemy of enemies) {
             if (enemy.checkCollision(this.player)) {
-                const health = this.player.getComponent<HealthComponent>('HealthComponent');
-                if (health && !health.invulnerable) {
-                    const armorMult =
-                        typeof this.player.getDamageTakenMultiplier === 'function'
-                            ? this.player.getDamageTakenMultiplier()
-                            : 1;
-                    const damage = enemy.damage * deltaTime * 2 * armorMult;
-                    health.takeDamage(damage, enemy);
-                }
+                this._resolvePlayerEnemyContact(enemy);
             }
         }
 

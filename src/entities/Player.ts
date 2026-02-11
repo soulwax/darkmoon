@@ -20,6 +20,7 @@ export interface PlayerStats {
     damageMultiplier: number;
     armor: number;
     luck: number;
+    shieldCapacity: number;
 }
 
 type WeaponClass<T extends Weapon = Weapon> = new (owner: Player, options?: Record<string, unknown>) => T;
@@ -47,6 +48,12 @@ export class Player extends Entity {
     weapons: Weapon[];
     baseMoveSpeed: number;
     basePickupRange: number;
+    baseShieldCapacity: number;
+    baseShieldRechargeRate: number;
+    shieldRechargeDelay: number;
+    shield: number;
+    shieldRechargeDelayTimer: number;
+    shieldImpactTimer: number;
     effects: PlayerEffect[];
     animationLockTimer: number;
 
@@ -71,7 +78,8 @@ export class Player extends Entity {
             pickupRange: 1.0,
             damageMultiplier: 1.0,
             armor: 0,
-            luck: 0
+            luck: 0,
+            shieldCapacity: 1.0
         };
 
         // Weapons
@@ -80,6 +88,12 @@ export class Player extends Entity {
         // Base stats used for derived values
         this.baseMoveSpeed = config.player?.speed || 120;
         this.basePickupRange = config.player?.pickupRange || 50;
+        this.baseShieldCapacity = config.player?.shieldCapacity || 45;
+        this.baseShieldRechargeRate = config.player?.shieldRechargeRate || 16;
+        this.shieldRechargeDelay = config.player?.shieldRechargeDelay || 2.5;
+        this.shield = this.baseShieldCapacity;
+        this.shieldRechargeDelayTimer = 0;
+        this.shieldImpactTimer = 0;
 
         // Active timed effects (powerups, etc.)
         this.effects = [];
@@ -269,9 +283,8 @@ export class Player extends Entity {
      * @param {number} value
      */
     applyStat(stat: keyof PlayerStats, value: number) {
-        if (this.stats[stat] !== undefined) {
-            this.stats[stat] += value;
-        }
+        const previousValue = this.stats[stat];
+        this.stats[stat] = previousValue + value;
 
         // Apply stat effects
         switch (stat) {
@@ -298,6 +311,13 @@ export class Player extends Entity {
                 break;
             case 'luck':
                 break;
+            case 'shieldCapacity': {
+                const oldMaxShield = this.baseShieldCapacity * previousValue;
+                const newMaxShield = this.getMaxShield();
+                const gainedShield = Math.max(0, newMaxShield - oldMaxShield);
+                this.shield = Math.min(newMaxShield, this.shield + gainedShield);
+                break;
+            }
         }
     }
 
@@ -367,6 +387,62 @@ export class Player extends Entity {
         return this.basePickupRange * this.stats.pickupRange * mult.pickupRange;
     }
 
+    getMaxShield() {
+        return Math.max(0, Math.floor(this.baseShieldCapacity * this.stats.shieldCapacity));
+    }
+
+    getShield() {
+        return Math.max(0, this.shield);
+    }
+
+    getShieldPercent() {
+        const maxShield = this.getMaxShield();
+        if (maxShield <= 0) return 0;
+        return Math.max(0, Math.min(1, this.shield / maxShield));
+    }
+
+    getShieldRechargeRate() {
+        return this.baseShieldRechargeRate;
+    }
+
+    absorbShieldDamage(amount: number) {
+        if (amount <= 0) return 0;
+
+        this.shieldRechargeDelayTimer = this.shieldRechargeDelay;
+
+        const maxShield = this.getMaxShield();
+        if (maxShield <= 0 || this.shield <= 0) return amount;
+
+        const absorbed = Math.min(this.shield, amount);
+        this.shield -= absorbed;
+        this.shieldImpactTimer = Math.max(this.shieldImpactTimer, 0.2);
+
+        return amount - absorbed;
+    }
+
+    restoreShield(amount: number) {
+        if (amount <= 0) return;
+        this.shield = Math.min(this.getMaxShield(), this.shield + amount);
+    }
+
+    refillShield() {
+        this.shield = this.getMaxShield();
+    }
+
+    getProximityAutoAttackDamage() {
+        const base = 30 + this.level * 2;
+        return Math.max(1, Math.floor(base * this.getDamageMultiplier()));
+    }
+
+    getProximityAutoAttackKnockback() {
+        const shieldScaling = 1 + Math.max(0, this.stats.shieldCapacity - 1) * 0.3;
+        return 260 * shieldScaling;
+    }
+
+    getProximityContactInterval() {
+        return 0.38;
+    }
+
     getActiveEffects() {
         return this.effects.map((e) => ({ ...e }));
     }
@@ -392,10 +468,11 @@ export class Player extends Entity {
                 break;
             }
             case 'shield': {
+                this.restoreShield(Math.max(20, Math.floor(this.getMaxShield() * 0.65)));
                 const health = this.getComponent<HealthComponent>('HealthComponent');
                 if (health) {
                     health.invulnerable = true;
-                    health.invulnerabilityTimer = Math.max(health.invulnerabilityTimer, 4);
+                    health.invulnerabilityTimer = Math.max(health.invulnerabilityTimer, 1.5);
                 }
                 break;
             }
@@ -446,7 +523,8 @@ export class Player extends Entity {
             pickupRange: 1.0,
             damageMultiplier: 1.0,
             armor: 0,
-            luck: 0
+            luck: 0,
+            shieldCapacity: 1.0
         };
 
         this.weapons = [];
@@ -466,6 +544,13 @@ export class Player extends Entity {
             this.basePickupRange = this.config.player?.pickupRange || 50;
             movement.speed = this.baseMoveSpeed;
         }
+
+        this.baseShieldCapacity = this.config.player?.shieldCapacity || 45;
+        this.baseShieldRechargeRate = this.config.player?.shieldRechargeRate || 16;
+        this.shieldRechargeDelay = this.config.player?.shieldRechargeDelay || 2.5;
+        this.shield = this.getMaxShield();
+        this.shieldRechargeDelayTimer = 0;
+        this.shieldImpactTimer = 0;
     }
 
     update(deltaTime: number) {
@@ -473,6 +558,23 @@ export class Player extends Entity {
 
         if (this.animationLockTimer > 0) {
             this.animationLockTimer -= deltaTime;
+        }
+
+        const maxShield = this.getMaxShield();
+        if (this.shield > maxShield) {
+            this.shield = maxShield;
+        }
+
+        if (this.shieldRechargeDelayTimer > 0) {
+            this.shieldRechargeDelayTimer -= deltaTime;
+        } else {
+            if (this.shield < maxShield) {
+                this.shield = Math.min(maxShield, this.shield + this.getShieldRechargeRate() * deltaTime);
+            }
+        }
+
+        if (this.shieldImpactTimer > 0) {
+            this.shieldImpactTimer -= deltaTime;
         }
 
         // Update timed effects
@@ -516,6 +618,8 @@ export class Player extends Entity {
             this._drawFallback(ctx, movement);
         }
 
+        this._drawShieldOrb(ctx);
+
         // Draw dash trail
         if (movement && movement.isDashing) {
             ctx.globalAlpha = 0.3;
@@ -533,6 +637,37 @@ export class Player extends Entity {
 
         // Draw level indicator
         this._drawLevelBadge(ctx);
+    }
+
+    /**
+     * Draw the rechargeable shield orb around the player.
+     */
+    _drawShieldOrb(ctx: CanvasRenderingContext2D) {
+        const maxShield = this.getMaxShield();
+        if (maxShield <= 0) return;
+
+        const shieldRatio = this.getShieldPercent();
+        const pulse = 0.9 + Math.sin(Date.now() / 200) * 0.1;
+        const impactBoost = this.shieldImpactTimer > 0 ? 0.18 + this.shieldImpactTimer * 0.4 : 0;
+        const alpha = Math.min(0.45, (0.07 + shieldRatio * 0.28) * pulse + impactBoost);
+        if (alpha <= 0.01) return;
+
+        const radius = 21 + shieldRatio * 9;
+        const gradient = ctx.createRadialGradient(this.x, this.y, radius * 0.2, this.x, this.y, radius * 1.35);
+        gradient.addColorStop(0, `rgba(160, 215, 255, ${alpha * 0.15})`);
+        gradient.addColorStop(0.7, `rgba(110, 190, 255, ${alpha * 0.4})`);
+        gradient.addColorStop(1, 'rgba(90, 165, 235, 0)');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, radius * 1.35, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(165, 225, 255, ${alpha * 0.95})`;
+        ctx.lineWidth = 1.75;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
     }
 
     /**
