@@ -25,19 +25,19 @@ Make what exists feel *good* before adding more.
 ### Juice Pass
 
 - [x] Hitstop — 2-3 frame freeze on heavy hits
-- [ ] Camera punch on player damage
+- [x] Camera punch on player damage
 - [x] Low-health vignette (red edge darkening)
-- [ ] XP gems burst outward before magnetizing in
-- [ ] Wire up the `armor` stat to actual damage reduction
-- [ ] Wire up the `luck` stat to actual RNG modifiers (drop rates, crit chance)
-- [ ] Screen shake presets per weapon type
+- [x] XP gems burst outward before magnetizing in
+- [x] Wire up the `armor` stat to actual damage reduction
+- [x] Wire up the `luck` stat to actual RNG modifiers (drop rates, crit chance)
+- [x] Screen shake presets per weapon type
 
 ### Cleanup
 
-- [ ] Move debug overlays behind `?debug=1` URL flag or `F3` hotkey
-- [ ] Remove hardcoded debug rectangles from GameScene.draw()
-- [ ] Extract magic numbers into config (spawn rates, particle counts, etc.)
-- [ ] Fix config vs code stat drift (player speed 120 in YAML vs 150 in code)
+- [ ] Move debug overlays behind `?debug=1` URL flag or `F3` hotkey (currently config-flag only: `config.debug.showCollisionBoxes`)
+- [x] Remove hardcoded debug rectangles from GameScene.draw()
+- [ ] Extract magic numbers into config — SpawnSystem still has hardcoded `minSpawnDistance=100`, `spawnMargin=50`, `waveDuration=30`, `maxEnemies=50`
+- [x] Fix config vs code stat drift (player speed aligned at 120 in both YAML and code)
 
 ---
 
@@ -260,24 +260,17 @@ Let players compete and share.
 
 ---
 
-## Graphics TODO (Carried Forward)
+## Graphics Backlog
 
 ### World Rendering
 
 - [ ] Add more terrain variants (cliffs, fences, carpets/floors) into world gen
-- [ ] Add optional debug overlays: collision tiles, spawn bounds, camera bounds
-
-### Characters / Enemies
-
-- [ ] Convert enemy sprite rendering to SpriteSheet + AnimatorComponent (match player approach)
-- [ ] Add enemy hit flash / tint via sprite draw options (avoid ctx.filter)
-- [ ] Add consistent shadow sizing using sprite frame dimensions
+- [ ] Add optional debug overlays: collision tiles, spawn bounds, camera bounds (blocked by debug-flag TODO above)
 
 ### VFX and Weapons
 
 - [ ] Add sprite-based projectile and impact effects (missiles/orbs/lightning)
-- [ ] Add screen-space post FX: vignette, mild CRT/scanlines toggle, damage flash
-- [ ] Add camera shake presets per weapon/enemy hit
+- [ ] Add screen-space post FX: mild CRT/scanlines toggle, damage flash (vignette done)
 
 ### Performance
 
