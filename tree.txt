@@ -1,5 +1,4 @@
 Darkmoon
-├───.annot8_backup.json
 ├───.gitignore
 ├───.markdownlint-cli2.json
 ├───CLAUDE.md

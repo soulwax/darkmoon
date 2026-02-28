@@ -220,6 +220,10 @@ class Application {
         if (this.audioPreferences.enabled) {
             void this.audioSystem.unlock();
         }
+    }
+
+    setPhase(next: RunPhase, reason: string, data?: unknown) {
+        const previous = this.phase;
         const redundant = previous === next && data === undefined;
 
         if (!redundant) {
@@ -232,10 +236,6 @@ class Application {
             reason,
             data: data ?? null,
             redundant
-            previous,
-            next,
-            reason,
-            data: data ?? null
         });
     }
 
