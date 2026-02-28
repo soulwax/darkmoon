@@ -7,9 +7,12 @@ import { AudioSystem } from './audio/AudioSystem';
 import { ProceduralAudioSystem } from './audio/ProceduralAudioSystem';
 import { ConfigLoader } from './config/ConfigLoader';
 import { GameConfig } from './config/GameConfig';
+import { DebugLogger } from './core/DebugLogger';
 import { eventBus, GameEvents } from './core/EventBus';
 import { GameScene } from './scenes/GameScene';
 import { SceneManager } from './scenes/SceneManager';
+
+DebugLogger.installConsoleBridge();
 
 interface GameOverData {
     time?: number;

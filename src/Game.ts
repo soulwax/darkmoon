@@ -2,6 +2,7 @@
 
 import { GameLoop } from './core/GameLoop';
 import { eventBus, GameEvents } from './core/EventBus';
+import { DebugLogger } from './core/DebugLogger';
 import { GameConfig } from './config/GameConfig';
 import type { AssetLoader } from './assets/AssetLoader';
 import type { InputManager } from './input/InputManager';
@@ -80,8 +81,8 @@ export class Game {
         this.eventBus.on(GameEvents.GAME_START, () => this.start());
         // Pause/resume are treated as commands coming from other systems.
         // Do not re-emit these events from the handlers to avoid recursion.
-        this.eventBus.on(GameEvents.GAME_PAUSE, () => this.pause());
-        this.eventBus.on(GameEvents.GAME_RESUME, () => this.resume());
+        this.eventBus.on(GameEvents.GAME_PAUSE, () => this.pause('event_bus:game_pause'));
+        this.eventBus.on(GameEvents.GAME_RESUME, () => this.resume('event_bus:game_resume'));
         this.eventBus.on(GameEvents.GAME_RESTART, () => this.restart());
         this.eventBus.on(GameEvents.GAME_OVER, () => this.endGame());
 
@@ -92,8 +93,14 @@ export class Game {
 
         // Window focus handling
         window.addEventListener('blur', () => {
+            DebugLogger.info('Game', 'window_blur', {
+                running: this.running,
+                paused: this.paused,
+                gameOver: this.gameOver,
+                hasFocus: document.hasFocus()
+            });
             if (this.running && !this.gameOver) {
-                this.pause();
+                this.pause('window_blur');
             }
         });
     }
@@ -136,23 +143,53 @@ export class Game {
     /**
      * Pause the game
      */
-    pause() {
-        if (!this.running || this.gameOver || this.paused) return;
+    pause(reason: string = 'unspecified') {
+        if (!this.running || this.gameOver || this.paused) {
+            DebugLogger.debug('Game', 'pause_ignored', {
+                reason,
+                running: this.running,
+                paused: this.paused,
+                gameOver: this.gameOver,
+                gameTime: Number(this.gameLoop.getGameTime().toFixed(2))
+            });
+            return;
+        }
         this.paused = true;
         this.gameLoop.pause();
 
-        console.log('Game paused');
+        console.log('Game paused', {
+            reason,
+            running: this.running,
+            paused: this.paused,
+            gameOver: this.gameOver,
+            gameTime: Number(this.gameLoop.getGameTime().toFixed(2))
+        });
     }
 
     /**
      * Resume the game
      */
-    resume() {
-        if (!this.paused || this.gameOver) return;
+    resume(reason: string = 'unspecified') {
+        if (!this.paused || this.gameOver) {
+            DebugLogger.debug('Game', 'resume_ignored', {
+                reason,
+                running: this.running,
+                paused: this.paused,
+                gameOver: this.gameOver,
+                gameTime: Number(this.gameLoop.getGameTime().toFixed(2))
+            });
+            return;
+        }
         this.paused = false;
         this.gameLoop.resume();
 
-        console.log('Game resumed');
+        console.log('Game resumed', {
+            reason,
+            running: this.running,
+            paused: this.paused,
+            gameOver: this.gameOver,
+            gameTime: Number(this.gameLoop.getGameTime().toFixed(2))
+        });
     }
 
     /**

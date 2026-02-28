@@ -10,6 +10,7 @@ import { SpawnSystem } from '../systems/SpawnSystem';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { Sword } from '../weapons/Sword';
 import { Longsword } from '../weapons/Longsword';
+import { DebugLogger } from '../core/DebugLogger';
 import { eventBus, GameEvents } from '../core/EventBus';
 import { HUD } from '../ui/HUD';
 import { LevelUpScreen } from '../ui/LevelUpScreen';
@@ -82,6 +83,19 @@ interface GameOverPayload {
     debug?: DeathDebugInfo;
 }
 
+type DebugLogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+interface EnemyProximitySnapshot {
+    enemyId: number;
+    enemyType: string;
+    enemyDamage: number;
+    enemyX: number;
+    enemyY: number;
+    playerX: number;
+    playerY: number;
+    distance: number;
+}
+
 export class GameScene extends Scene {
     config: GameConfig;
     assetLoader: AssetLoader;
@@ -114,6 +128,10 @@ export class GameScene extends Scene {
     deathDebugInfo: DeathDebugInfo | null;
     debugLog: string[];
     lastGameOverPayload: GameOverPayload | null;
+    lastProximityEnemyId: number | null;
+    lastProximityBand: string;
+    lastProximityLogTime: number;
+    lastContactGateLogTime: number;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -152,12 +170,23 @@ export class GameScene extends Scene {
         this.deathDebugInfo = null;
         this.debugLog = [];
         this.lastGameOverPayload = null;
+        this.lastProximityEnemyId = null;
+        this.lastProximityBand = 'none';
+        this.lastProximityLogTime = -Infinity;
+        this.lastContactGateLogTime = -Infinity;
 
         this._setupEventListeners();
     }
 
     _setupEventListeners() {
         eventBus.on(GameEvents.PLAYER_LEVELUP, (data: { player: Player; level: number; xpToNext: number }) => {
+            this._pushDebugLog('player_levelup_event', 'warn', {
+                level: data.level,
+                xpToNext: data.xpToNext,
+                xpRemainder: data.player?.xp ?? null,
+                gamePaused: this.game.paused,
+                gameTime: Number(this.gameTime.toFixed(2))
+            });
             this._showLevelUpScreen();
         });
 
@@ -209,6 +238,16 @@ export class GameScene extends Scene {
                 playerHealthAfter: health?.health ?? 0,
                 playerShieldAfter: typeof this.player?.getShield === 'function' ? this.player.getShield() : 0
             };
+            this._pushDebugLog('player_damaged_event', 'warn', {
+                sourceType: sourceInfo.sourceType,
+                sourceId: sourceInfo.sourceId,
+                sourceX: sourceInfo.sourceX,
+                sourceY: sourceInfo.sourceY,
+                rawAmount: data?.amount ?? null,
+                remainingDamage: data?.remaining ?? null,
+                healthAfter: this.lastDamageSnapshot.playerHealthAfter,
+                shieldAfter: this.lastDamageSnapshot.playerShieldAfter
+            });
 
             if (source && this.player) {
                 const sx = typeof source.x === 'number' ? source.x : this.player.x;
@@ -265,8 +304,28 @@ export class GameScene extends Scene {
         });
 
         eventBus.on(GameEvents.PLAYER_DIED, () => {
+            this._pushDebugLog('player_died_event_received', 'error', {
+                deathDebug: this.deathDebugInfo,
+                lastDamageSnapshot: this.lastDamageSnapshot
+            });
             const message = this._formatDeathMessage('You were overwhelmed. Start again?');
             this._emitGameOver(message);
+        });
+
+        eventBus.on(GameEvents.GAME_PAUSE, () => {
+            this._pushDebugLog('event_game_pause_received', 'warn', {
+                gamePaused: this.game.paused,
+                showingLevelUp: this.showingLevelUp,
+                hasFocus: document.hasFocus()
+            });
+        });
+
+        eventBus.on(GameEvents.GAME_RESUME, () => {
+            this._pushDebugLog('event_game_resume_received', 'info', {
+                gamePaused: this.game.paused,
+                showingLevelUp: this.showingLevelUp,
+                hasFocus: document.hasFocus()
+            });
         });
     }
 
@@ -339,11 +398,112 @@ export class GameScene extends Scene {
         return fallback;
     }
 
-    _pushDebugLog(message: string) {
+    _getNearestEnemySnapshot(enemies: Enemy[]): EnemyProximitySnapshot | null {
+        if (!this.player || !enemies || enemies.length === 0) return null;
+
+        let nearestEnemy: Enemy | null = null;
+        let nearestDistanceSq = Number.POSITIVE_INFINITY;
+
+        for (const enemy of enemies) {
+            if (!enemy || enemy.destroyed) continue;
+            const dx = enemy.x - this.player.x;
+            const dy = enemy.y - this.player.y;
+            const distanceSq = dx * dx + dy * dy;
+            if (distanceSq < nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                nearestEnemy = enemy;
+            }
+        }
+
+        if (!nearestEnemy || !Number.isFinite(nearestDistanceSq)) return null;
+        const distance = Math.sqrt(nearestDistanceSq);
+        return {
+            enemyId: nearestEnemy.id,
+            enemyType: nearestEnemy.type || 'enemy',
+            enemyDamage: nearestEnemy.damage,
+            enemyX: nearestEnemy.x,
+            enemyY: nearestEnemy.y,
+            playerX: this.player.x,
+            playerY: this.player.y,
+            distance: Number(distance.toFixed(2))
+        };
+    }
+
+    _getProximityBand(distance: number) {
+        if (distance <= 30) return 'contact';
+        if (distance <= 55) return 'danger-close';
+        if (distance <= 90) return 'close';
+        if (distance <= 140) return 'near';
+        return 'far';
+    }
+
+    _trackEnemyProximity(enemies: Enemy[]) {
+        const nearest = this._getNearestEnemySnapshot(enemies);
+        if (!nearest) {
+            if (this.lastProximityEnemyId !== null) {
+                this._pushDebugLog('enemy_proximity_clear', 'debug', {
+                    enemiesAlive: enemies.filter((enemy) => !enemy.destroyed).length
+                });
+            }
+            this.lastProximityEnemyId = null;
+            this.lastProximityBand = 'none';
+            return;
+        }
+
+        const band = this._getProximityBand(nearest.distance);
+        const shouldLog =
+            nearest.enemyId !== this.lastProximityEnemyId ||
+            band !== this.lastProximityBand ||
+            (this.gameTime - this.lastProximityLogTime) >= 1.25;
+
+        if (!shouldLog) return;
+
+        this.lastProximityEnemyId = nearest.enemyId;
+        this.lastProximityBand = band;
+        this.lastProximityLogTime = this.gameTime;
+
+        const level: DebugLogLevel = (band === 'contact' || band === 'danger-close') ? 'warn' : 'debug';
+        this._pushDebugLog('enemy_proximity', level, {
+            ...nearest,
+            band,
+            enemiesAlive: enemies.filter((enemy) => !enemy.destroyed).length
+        });
+    }
+
+    _getPauseInputSnapshot() {
+        const pauseKeys = this.inputManager.bindings.get('pause') || [];
+        return pauseKeys.map((code) => ({
+            code,
+            down: !!this.inputManager.keys.get(code),
+            pressed: !!this.inputManager.keysPressed.get(code),
+            released: !!this.inputManager.keysReleased.get(code)
+        }));
+    }
+
+    _pushDebugLog(message: string, level: DebugLogLevel = 'debug', data?: unknown) {
         const timestamp = this.gameTime.toFixed(2);
-        this.debugLog.push(`[${timestamp}] ${message}`);
+        this.debugLog.push(`[${timestamp}] [${level.toUpperCase()}] ${message}`);
         if (this.debugLog.length > 16) {
             this.debugLog.shift();
+        }
+
+        const payload = data === undefined
+            ? { t: Number(timestamp), message }
+            : { t: Number(timestamp), message, data };
+
+        switch (level) {
+            case 'info':
+                DebugLogger.info('GameScene', message, payload);
+                break;
+            case 'warn':
+                DebugLogger.warn('GameScene', message, payload);
+                break;
+            case 'error':
+                DebugLogger.error('GameScene', message, payload);
+                break;
+            default:
+                DebugLogger.debug('GameScene', message, payload);
+                break;
         }
     }
 
@@ -373,8 +533,7 @@ export class GameScene extends Scene {
             debug: debugPayload
         };
         this.lastGameOverPayload = payload;
-        this._pushDebugLog(`GAME_OVER -> ${this._formatDeathDebug(debugPayload)}`);
-        console.warn('[Darkmoon] Game over diagnostics', payload);
+        this._pushDebugLog(`game_over -> ${this._formatDeathDebug(debugPayload)}`, 'warn', payload);
 
         // End the game loop deterministically.
         this.game.endGame();
@@ -516,6 +675,10 @@ export class GameScene extends Scene {
         this.deathDebugInfo = null;
         this.lastGameOverPayload = null;
         this.debugLog = [];
+        this.lastProximityEnemyId = null;
+        this.lastProximityBand = 'none';
+        this.lastProximityLogTime = -Infinity;
+        this.lastContactGateLogTime = -Infinity;
         this._pushDebugLog('Scene entered');
     }
 
@@ -534,6 +697,10 @@ export class GameScene extends Scene {
         this.lastDamageSnapshot = null;
         this.deathDebugInfo = null;
         this.lastGameOverPayload = null;
+        this.lastProximityEnemyId = null;
+        this.lastProximityBand = 'none';
+        this.lastProximityLogTime = -Infinity;
+        this.lastContactGateLogTime = -Infinity;
         this._pushDebugLog('Scene exited');
     }
 
@@ -856,13 +1023,25 @@ export class GameScene extends Scene {
 
     _showLevelUpScreen() {
         this.showingLevelUp = true;
-        this.game.pause();
+        this._pushDebugLog('level_up_screen_open', 'warn', {
+            level: this.player?.level ?? null,
+            xp: this.player?.xp ?? null,
+            xpToNextLevel: this.player?.xpToNextLevel ?? null,
+            gamePaused: this.game.paused
+        });
+        this.game.pause('level_up_screen');
 
         const options = this.upgradeSystem.generateOptions(3);
         this.levelUpScreen.show(options, (selected) => {
             this.upgradeSystem.applyUpgrade(selected as UpgradeOption);
             this.showingLevelUp = false;
-            this.game.resume();
+            this._pushDebugLog('level_up_selection_applied', 'info', {
+                selected,
+                level: this.player?.level ?? null,
+                xp: this.player?.xp ?? null,
+                xpToNextLevel: this.player?.xpToNextLevel ?? null
+            });
+            this.game.resume('level_up_selection');
         });
     }
 
@@ -1052,14 +1231,43 @@ export class GameScene extends Scene {
 
     _resolvePlayerEnemyContact(enemy: Enemy) {
         if (enemy.destroyed) return;
-        if ((this.enemyContactCooldowns.get(enemy.id) || 0) > 0) return;
-        if (this.playerSpawnInvulnerabilityTimer > 0) return;
+
+        const initialDx = enemy.x - this.player.x;
+        const initialDy = enemy.y - this.player.y;
+        const initialDistance = Number((Math.sqrt(initialDx * initialDx + initialDy * initialDy) || 0).toFixed(2));
+        const enemyContactCooldown = this.enemyContactCooldowns.get(enemy.id) || 0;
+        if (enemyContactCooldown > 0) {
+            if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
+                this.lastContactGateLogTime = this.gameTime;
+                this._pushDebugLog('enemy_contact_skipped_enemy_cooldown', 'debug', {
+                    enemyId: enemy.id,
+                    enemyType: enemy.type || 'enemy',
+                    distance: initialDistance,
+                    cooldownRemaining: Number(enemyContactCooldown.toFixed(3))
+                });
+            }
+            return;
+        }
+        if (this.playerSpawnInvulnerabilityTimer > 0) {
+            if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
+                this.lastContactGateLogTime = this.gameTime;
+                this._pushDebugLog('enemy_contact_skipped_spawn_invulnerability', 'debug', {
+                    enemyId: enemy.id,
+                    enemyType: enemy.type || 'enemy',
+                    distance: initialDistance,
+                    invulnerabilityRemaining: Number(this.playerSpawnInvulnerabilityTimer.toFixed(3))
+                });
+            }
+            return;
+        }
 
         const proximityDamage = this.player.getProximityAutoAttackDamage();
         const knockbackStrength = this.player.getProximityAutoAttackKnockback();
         const contactInterval = this.player.getProximityContactInterval();
         const playerCollider = this.player.getComponent<ColliderComponent>('ColliderComponent');
         const enemyCollider = enemy.getComponent<ColliderComponent>('ColliderComponent');
+        const enemyHealth = enemy.getComponent<HealthComponent>('HealthComponent');
+        const enemyHealthBefore = enemyHealth?.health ?? null;
 
         // Require meaningful overlap so "near misses" don't count as contact hits.
         if (
@@ -1075,11 +1283,31 @@ export class GameScene extends Scene {
             const contactRadius = Math.max(6, playerCollider.radius + enemyCollider.radius - 6);
 
             if ((dx * dx + dy * dy) > (contactRadius * contactRadius)) {
+                if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
+                    this.lastContactGateLogTime = this.gameTime;
+                    this._pushDebugLog('enemy_contact_overlap_rejected', 'debug', {
+                        enemyId: enemy.id,
+                        enemyType: enemy.type || 'enemy',
+                        centerDistance: Number(Math.sqrt(dx * dx + dy * dy).toFixed(2)),
+                        requiredContactRadius: Number(contactRadius.toFixed(2))
+                    });
+                }
                 return;
             }
         }
 
         enemy.takeDamage(proximityDamage, this.player);
+        this._pushDebugLog('enemy_proximity_attack_applied', 'info', {
+            enemyId: enemy.id,
+            enemyType: enemy.type || 'enemy',
+            enemyDamage: enemy.damage,
+            enemyHealthBefore,
+            enemyHealthAfter: enemyHealth?.health ?? null,
+            enemyDestroyed: enemy.destroyed,
+            playerProximityDamage: proximityDamage,
+            contactInterval,
+            distance: initialDistance
+        });
 
         if (!enemy.destroyed) {
             const dx = enemy.x - this.player.x;
@@ -1118,6 +1346,20 @@ export class GameScene extends Scene {
                     playerHealthAfter: healthAfter,
                     playerShieldAfter: shieldAfter
                 };
+                this._pushDebugLog(remainingDamage > 0 ? 'player_contact_damage_applied' : 'player_contact_damage_absorbed_by_shield', remainingDamage > 0 ? 'warn' : 'info', {
+                    enemyId: enemy.id,
+                    enemyType: enemy.type || 'enemy',
+                    enemyDamage: enemy.damage,
+                    armorMultiplier: Number(armorMult.toFixed(3)),
+                    incomingDamage,
+                    remainingDamage,
+                    healthBefore,
+                    healthAfter,
+                    shieldBefore,
+                    shieldAfter,
+                    playerDamageCooldown: Number(this.playerContactDamageCooldown.toFixed(3)),
+                    distance: Number(dist.toFixed(2))
+                });
 
                 if (health.isDead || healthAfter <= 0) {
                     this.deathDebugInfo = {
@@ -1133,7 +1375,19 @@ export class GameScene extends Scene {
                         playerY: this.player.y,
                         time: this.gameTime
                     };
+                    this._pushDebugLog('death_debug_enemy_contact_captured', 'error', this.deathDebugInfo);
                 }
+            } else if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
+                this.lastContactGateLogTime = this.gameTime;
+                this._pushDebugLog('player_contact_damage_gated', 'debug', {
+                    enemyId: enemy.id,
+                    enemyType: enemy.type || 'enemy',
+                    enemyDamage: enemy.damage,
+                    playerDamageCooldown: Number(this.playerContactDamageCooldown.toFixed(3)),
+                    healthPresent: !!health,
+                    healthDead: health ? health.isDead : null,
+                    healthInvulnerable: health ? health.invulnerable : null
+                });
             }
         }
 
@@ -1266,18 +1520,20 @@ export class GameScene extends Scene {
         const lineHeight = 15;
         const width = Math.min(this.game.canvas.width - 20, 700);
         const height = padding * 2 + lines.length * lineHeight;
+        const x = 10;
+        const y = Math.max(10, this.game.canvas.height - height - 10);
 
         ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
-        ctx.fillRect(10, 10, width, height);
+        ctx.fillRect(x, y, width, height);
         ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)';
         ctx.lineWidth = 1;
-        ctx.strokeRect(10.5, 10.5, width - 1, height - 1);
+        ctx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
 
         ctx.fillStyle = '#d8f5ff';
-        let y = 10 + padding;
+        let textY = y + padding;
         for (const line of lines) {
-            ctx.fillText(line, 10 + padding, y);
-            y += lineHeight;
+            ctx.fillText(line, x + padding, textY);
+            textY += lineHeight;
         }
 
         ctx.restore();
@@ -1289,7 +1545,7 @@ export class GameScene extends Scene {
 
         if (this.inputManager.isActionPressed('debugToggle')) {
             this.debugOverlayEnabled = !this.debugOverlayEnabled;
-            this._pushDebugLog(`debug_overlay=${this.debugOverlayEnabled ? 'on' : 'off'}`);
+            this._pushDebugLog(`debug_overlay=${this.debugOverlayEnabled ? 'on' : 'off'}`, 'info');
         }
 
         if (this._validatePlayerState()) {
@@ -1310,6 +1566,14 @@ export class GameScene extends Scene {
 
         // Handle pause
         if (this.inputManager.isActionPressed('pause')) {
+            const pauseNearestEnemy = this._getNearestEnemySnapshot(this.spawnSystem?.getEnemies?.() || []);
+            this._pushDebugLog('pause_action_pressed', 'warn', {
+                gamePausedBeforeToggle: this.game.paused,
+                showingLevelUp: this.showingLevelUp,
+                hasFocus: document.hasFocus(),
+                pauseInput: this._getPauseInputSnapshot(),
+                nearestEnemy: pauseNearestEnemy
+            });
             if (this.game.paused) {
                 eventBus.emit(GameEvents.GAME_RESUME);
             } else {
@@ -1346,6 +1610,7 @@ export class GameScene extends Scene {
             }
         }
         this._tickEnemyContactCooldowns(deltaTime, enemies);
+        this._trackEnemyProximity(enemies);
 
         this.nearestChest = this._getNearestClosedChest(this.chestInteractRange);
         if (this.nearestChest && this.inputManager.isActionPressed('interact')) {
