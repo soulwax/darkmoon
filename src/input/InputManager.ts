@@ -1,6 +1,6 @@
 // File: src/input/InputManager.ts
 
-import { Vector2, MathUtils } from '../core/Math';
+import { MathUtils, Vector2 } from '../core/Math';
 import type { Camera } from '../graphics/Camera';
 
 interface MouseState {
@@ -88,10 +88,10 @@ export class InputManager {
             interact: 'KeyE',
             attack: 'KeyJ',
             special: 'KeyK',
-            pause: 'Escape',
             inventory: 'KeyI',
             restart: 'KeyR',
-            debugToggle: 'F3'
+            debugToggle: 'F3',
+            pause: 'Escape'
         };
 
         // Merge with config

@@ -1,6 +1,6 @@
 {
   "name": "darkmoon",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A Vampire Survivors-like browser game",
   "type": "module",
   "scripts": {

@@ -83,7 +83,6 @@ input:
     interact: "E"
     attack: "J"
     special: "K"
-    pause: "Escape"
     inventory: "I"
     map: "M"
 
@@ -193,7 +192,6 @@ game_states:
   states:
     - main_menu
     - gameplay
-    - pause
     - inventory
     - settings
     - game_over

@@ -84,7 +84,6 @@ export const DefaultConfig = {
             interact: 'KeyE',
             attack: 'KeyJ',
             special: 'KeyK',
-            pause: 'Escape',
             inventory: 'KeyI',
             map: 'KeyM'
         },

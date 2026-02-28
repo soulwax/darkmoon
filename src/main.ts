@@ -59,6 +59,8 @@ interface AudioPreferences extends AudioSettingsLike {
     enabled: boolean;
 }
 
+type RunPhase = 'menu' | 'playing' | 'gameover';
+
 const AUDIO_PREFS_STORAGE_KEY = 'darkmoon.audio.preferences.v1';
 
 class Application {
@@ -68,6 +70,7 @@ class Application {
     audioSystem: AudioBackend | null;
     audioPreferences: AudioPreferences;
     lastGameOverData: GameOverData | null;
+    phase: RunPhase;
 
     constructor() {
         this.game = null;
@@ -82,6 +85,7 @@ class Application {
             sfxVolume: 0.85
         };
         this.lastGameOverData = null;
+        this.phase = 'menu';
     }
 
     async init() {
@@ -143,14 +147,20 @@ class Application {
             sceneManager: this.sceneManager
         });
 
-        // Setup UI event handlers
-        this.setupUI();
-
         // Debug/dev convenience: auto-start game via URL param (?autostart=1)
         const params = new URLSearchParams(window.location.search);
-        if (params.has('autostart')) {
-            this.hideMenu();
-            this.startGame();
+        const hasAutostart = params.has('autostart');
+
+        // Setup UI event handlers
+        this.setupUI();
+        if (!hasAutostart) {
+            this.showMenu();
+        }
+        this.hideGameOver();
+        this.setPhase('menu', 'init_complete');
+
+        if (hasAutostart) {
+            this.startGame('autostart_param');
         }
 
         console.log('Darkmoon ready!');
@@ -210,6 +220,23 @@ class Application {
         if (this.audioPreferences.enabled) {
             void this.audioSystem.unlock();
         }
+        const redundant = previous === next && data === undefined;
+
+        if (!redundant) {
+            this.phase = next;
+        }
+
+        DebugLogger.info('Application', 'phase_transition', {
+            previous,
+            next,
+            reason,
+            data: data ?? null,
+            redundant
+            previous,
+            next,
+            reason,
+            data: data ?? null
+        });
     }
 
     setupUI() {
@@ -220,14 +247,10 @@ class Application {
         window.addEventListener('pointerdown', unlockAudio, { once: true });
         window.addEventListener('keydown', unlockAudio, { once: true });
 
-        const restartGame = () => {
+        const restartGame = (reason: string = 'ui_restart') => {
             this.audioSystem?.playUiSelect();
             void this.audioSystem?.unlock();
-            this.hidePauseOverlay();
-            this.hideGameOver();
-            this.hideMenu();
-            this.lastGameOverData = null;
-            eventBus.emit(GameEvents.GAME_RESTART);
+            this.restartGame(reason);
         };
 
         // Start button
@@ -236,24 +259,39 @@ class Application {
             startButton.addEventListener('click', () => {
                 this.audioSystem?.playUiSelect();
                 void this.audioSystem?.unlock();
-                this.hideMenu();
-                this.lastGameOverData = null;
-                this.startGame();
+                this.startGame('ui_start_button');
             });
         }
 
         // Restart button
         const restartButton = document.getElementById('restartButton');
         if (restartButton) {
-            restartButton.addEventListener('click', restartGame);
+            restartButton.addEventListener('click', () => restartGame('ui_restart_button'));
         }
 
-        // Listen for game over
+        // Listen for lifecycle events.
+        eventBus.on(GameEvents.GAME_START, () => {
+            this.hideMenu();
+            this.hideGameOver();
+            this.setPhase('playing', 'event_game_start');
+        });
+
+        eventBus.on(GameEvents.GAME_RESTART, () => {
+            this.hideMenu();
+            this.hideGameOver();
+            this.setPhase('playing', 'event_game_restart');
+        });
+
         eventBus.on(GameEvents.GAME_OVER, (data: GameOverData) => {
             this.lastGameOverData = data;
-            this.hidePauseOverlay();
             this.showGameOver(data);
             this.ensureGameOverVisible(data);
+            this.setPhase('gameover', 'event_game_over', {
+                time: data.time ?? null,
+                kills: data.kills ?? null,
+                level: data.level ?? null,
+                reason: data.debug?.reason ?? null
+            });
         });
 
         // Safety fallback: if a death event occurs without a game-over event, force one.
@@ -284,46 +322,12 @@ class Application {
             }, 140);
         });
 
-        // Pause overlay controls
-        const pauseResumeButton = document.getElementById('pauseResumeButton');
-        if (pauseResumeButton) {
-            pauseResumeButton.addEventListener('click', () => {
-                this.audioSystem?.playUiSelect();
-                eventBus.emit(GameEvents.GAME_RESUME);
-            });
-        }
-
-        eventBus.on(GameEvents.GAME_PAUSE, () => {
-            this.showPauseOverlay();
-        });
-
-        eventBus.on(GameEvents.GAME_RESUME, () => {
-            this.hidePauseOverlay();
-        });
-
-        eventBus.on(GameEvents.GAME_START, () => {
-            this.hidePauseOverlay();
-        });
-
-        eventBus.on(GameEvents.GAME_RESTART, () => {
-            this.hidePauseOverlay();
-            this.hideGameOver();
-        });
-
         // Allow keyboard restart directly from death screen.
         window.addEventListener('keydown', (e) => {
             if (!this.isGameOverVisible()) return;
             if (e.code === 'KeyR' || e.code === 'Enter' || e.code === 'Space') {
                 e.preventDefault();
-                restartGame();
-            }
-        });
-
-        // Resume from pause even when gameplay loop is paused.
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Escape' && this.game?.paused) {
-                e.preventDefault();
-                eventBus.emit(GameEvents.GAME_RESUME);
+                restartGame('ui_restart_keyboard');
             }
         });
 
@@ -440,15 +444,32 @@ class Application {
         });
     }
 
-    startGame() {
+    startGame(reason: string = 'start_game') {
+        if (this.phase === 'playing' && this.game?.isRunning()) {
+            DebugLogger.debug('Application', 'start_ignored_already_playing', { reason });
+            return;
+        }
+
         void this.audioSystem?.unlock();
         this.lastGameOverData = null;
+        this.hideMenu();
+        this.hideGameOver();
+        this.setPhase('playing', reason);
 
         // Switch to game scene
         this.sceneManager?.switchTo('game', {}, false, 'wipe');
 
         // Start game loop
         eventBus.emit(GameEvents.GAME_START);
+    }
+
+    restartGame(reason: string = 'restart_game') {
+        void this.audioSystem?.unlock();
+        this.lastGameOverData = null;
+        this.hideMenu();
+        this.hideGameOver();
+        this.setPhase('playing', reason);
+        eventBus.emit(GameEvents.GAME_RESTART);
     }
 
     hideMenu() {
@@ -475,22 +496,6 @@ class Application {
         if (debugEl) {
             debugEl.textContent = '';
             debugEl.style.display = 'none';
-        }
-    }
-
-    showPauseOverlay() {
-        const pause = document.getElementById('pauseOverlay');
-        if (pause) {
-            pause.classList.remove('hidden');
-            pause.style.display = 'flex';
-        }
-    }
-
-    hidePauseOverlay() {
-        const pause = document.getElementById('pauseOverlay');
-        if (pause) {
-            pause.classList.add('hidden');
-            pause.style.display = 'none';
         }
     }
 

@@ -184,7 +184,6 @@ export class GameScene extends Scene {
                 level: data.level,
                 xpToNext: data.xpToNext,
                 xpRemainder: data.player?.xp ?? null,
-                gamePaused: this.game.paused,
                 gameTime: Number(this.gameTime.toFixed(2))
             });
             this._showLevelUpScreen();
@@ -310,22 +309,6 @@ export class GameScene extends Scene {
             });
             const message = this._formatDeathMessage('You were overwhelmed. Start again?');
             this._emitGameOver(message);
-        });
-
-        eventBus.on(GameEvents.GAME_PAUSE, () => {
-            this._pushDebugLog('event_game_pause_received', 'warn', {
-                gamePaused: this.game.paused,
-                showingLevelUp: this.showingLevelUp,
-                hasFocus: document.hasFocus()
-            });
-        });
-
-        eventBus.on(GameEvents.GAME_RESUME, () => {
-            this._pushDebugLog('event_game_resume_received', 'info', {
-                gamePaused: this.game.paused,
-                showingLevelUp: this.showingLevelUp,
-                hasFocus: document.hasFocus()
-            });
         });
     }
 
@@ -468,16 +451,6 @@ export class GameScene extends Scene {
             band,
             enemiesAlive: enemies.filter((enemy) => !enemy.destroyed).length
         });
-    }
-
-    _getPauseInputSnapshot() {
-        const pauseKeys = this.inputManager.bindings.get('pause') || [];
-        return pauseKeys.map((code) => ({
-            code,
-            down: !!this.inputManager.keys.get(code),
-            pressed: !!this.inputManager.keysPressed.get(code),
-            released: !!this.inputManager.keysReleased.get(code)
-        }));
     }
 
     _pushDebugLog(message: string, level: DebugLogLevel = 'debug', data?: unknown) {
@@ -1026,10 +999,8 @@ export class GameScene extends Scene {
         this._pushDebugLog('level_up_screen_open', 'warn', {
             level: this.player?.level ?? null,
             xp: this.player?.xp ?? null,
-            xpToNextLevel: this.player?.xpToNextLevel ?? null,
-            gamePaused: this.game.paused
+            xpToNextLevel: this.player?.xpToNextLevel ?? null
         });
-        this.game.pause('level_up_screen');
 
         const options = this.upgradeSystem.generateOptions(3);
         this.levelUpScreen.show(options, (selected) => {
@@ -1041,7 +1012,6 @@ export class GameScene extends Scene {
                 xp: this.player?.xp ?? null,
                 xpToNextLevel: this.player?.xpToNextLevel ?? null
             });
-            this.game.resume('level_up_selection');
         });
     }
 
@@ -1491,7 +1461,7 @@ export class GameScene extends Scene {
             `time=${this.gameTime.toFixed(2)} wave=${this.spawnSystem?.waveNumber ?? 0} enemies=${this.spawnSystem?.getEnemies().length ?? 0}`,
             `player=(${this.player ? this.player.x.toFixed(1) : 'n/a'}, ${this.player ? this.player.y.toFixed(1) : 'n/a'})`,
             `hp=${health ? `${Math.round(health.health)}/${Math.round(health.maxHealth)}` : 'missing'} shield=${Math.round(shield)}`,
-            `flags: paused=${this.game.paused} over=${this.gameOverTriggered} levelup=${this.showingLevelUp}`
+            `flags: over=${this.gameOverTriggered} levelup=${this.showingLevelUp}`
         ];
 
         if (this.lastDamageSnapshot) {
@@ -1562,23 +1532,6 @@ export class GameScene extends Scene {
         }
         if (this.playerSpawnInvulnerabilityTimer > 0) {
             this.playerSpawnInvulnerabilityTimer = Math.max(0, this.playerSpawnInvulnerabilityTimer - deltaTime);
-        }
-
-        // Handle pause
-        if (this.inputManager.isActionPressed('pause')) {
-            const pauseNearestEnemy = this._getNearestEnemySnapshot(this.spawnSystem?.getEnemies?.() || []);
-            this._pushDebugLog('pause_action_pressed', 'warn', {
-                gamePausedBeforeToggle: this.game.paused,
-                showingLevelUp: this.showingLevelUp,
-                hasFocus: document.hasFocus(),
-                pauseInput: this._getPauseInputSnapshot(),
-                nearestEnemy: pauseNearestEnemy
-            });
-            if (this.game.paused) {
-                eventBus.emit(GameEvents.GAME_RESUME);
-            } else {
-                eventBus.emit(GameEvents.GAME_PAUSE);
-            }
         }
 
         if (this.hitstopTimer > 0) {
