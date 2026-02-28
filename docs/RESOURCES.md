@@ -1,5 +1,9 @@
 # Darkmoon Resources Guide
 
+> **AI Agents**: This file covers the asset pipeline and resource system.
+> For code architecture see [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md).
+> For conventions and workflow see [`CLAUDE.md`](../CLAUDE.md) (narrative) or [`CODEX.md`](../CODEX.md) (code-first).
+
 This document provides a comprehensive overview of all resources available in the Darkmoon game project.
 
 ## Table of Contents
@@ -368,6 +372,17 @@ Fonts are registered in the resource manifest and loaded at game startup.
 
 ## Related Documentation
 
+### Asset & Resource Internals
 - [Manifest Format Guide](../Resources/manifests/README.md)
 - [Scene Save Format](../Resources/saves/README.md)
 - [Shader System](../Resources/shaders/README.md)
+
+### AI Agent Documentation
+
+| File | Purpose |
+|------|---------|
+| [`CLAUDE.md`](../CLAUDE.md) | Narrative conventions, patterns, gotchas, workflow |
+| [`CODEX.md`](../CODEX.md) | Machine-readable quick reference for Codex/GPT agents |
+| [`docs/ARCHITECTURE.md`](./ARCHITECTURE.md) | Deep system-by-system technical breakdown |
+| [`TODO.md`](../TODO.md) | 7-phase development roadmap |
+| [`README.md`](../README.md) | Player-facing documentation |
