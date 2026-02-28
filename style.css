@@ -553,6 +553,16 @@ button {
     margin-bottom: 14px;
 }
 
+.death-debug {
+    color: var(--px-muted);
+    font-size: 11px;
+    margin: -4px auto 14px;
+    max-width: 620px;
+    text-transform: none;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
 .final-stats {
     color: var(--px-text);
     font-size: 14px;

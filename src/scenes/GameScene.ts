@@ -47,6 +47,41 @@ interface TileCollisionEntity {
     ): T | null;
 }
 
+interface DamageSnapshot {
+    time: number;
+    amount: number;
+    sourceType: string;
+    sourceId: number | null;
+    sourceX: number | null;
+    sourceY: number | null;
+    playerHealthAfter: number;
+    playerShieldAfter: number;
+}
+
+interface DeathDebugInfo {
+    reason: string;
+    sourceType?: string;
+    sourceId?: number;
+    incomingDamage?: number;
+    healthBefore?: number;
+    healthAfter?: number;
+    shieldBefore?: number;
+    shieldAfter?: number;
+    playerX?: number;
+    playerY?: number;
+    time?: number;
+}
+
+interface GameOverPayload {
+    time?: number;
+    kills?: number;
+    level?: number;
+    damageDealt?: number;
+    gemsCollected?: number;
+    message?: string;
+    debug?: DeathDebugInfo;
+}
+
 export class GameScene extends Scene {
     config: GameConfig;
     assetLoader: AssetLoader;
@@ -74,6 +109,11 @@ export class GameScene extends Scene {
     playerContactDamageInterval: number;
     gameOverTriggered: boolean;
     playerSpawnInvulnerabilityTimer: number;
+    debugOverlayEnabled: boolean;
+    lastDamageSnapshot: DamageSnapshot | null;
+    deathDebugInfo: DeathDebugInfo | null;
+    debugLog: string[];
+    lastGameOverPayload: GameOverPayload | null;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -107,6 +147,11 @@ export class GameScene extends Scene {
         this.playerContactDamageInterval = 0.6;
         this.gameOverTriggered = false;
         this.playerSpawnInvulnerabilityTimer = 0;
+        this.debugOverlayEnabled = true;
+        this.lastDamageSnapshot = null;
+        this.deathDebugInfo = null;
+        this.debugLog = [];
+        this.lastGameOverPayload = null;
 
         this._setupEventListeners();
     }
@@ -142,15 +187,34 @@ export class GameScene extends Scene {
             this.particleSystem?.createDamageNumber(data.enemy.x, data.enemy.y, data.amount, '#fff');
         });
 
-        eventBus.on(GameEvents.PLAYER_DAMAGED, (data?: { source?: { x: number; y: number } | null }) => {
+        eventBus.on(GameEvents.PLAYER_DAMAGED, (data?: {
+            source?: { x?: number; y?: number; type?: string; id?: number } | null;
+            amount?: number;
+            remaining?: number;
+        }) => {
             this.camera?.shake(3, 0.2);
 
             if (!this.camera) return;
 
             const source = data?.source;
+            const sourceInfo = this._extractSourceDebugInfo(source);
+            const health = this.player?.getComponent<HealthComponent>('HealthComponent');
+            this.lastDamageSnapshot = {
+                time: this.gameTime,
+                amount: Math.max(0, data?.amount || 0),
+                sourceType: sourceInfo.sourceType,
+                sourceId: sourceInfo.sourceId,
+                sourceX: sourceInfo.sourceX,
+                sourceY: sourceInfo.sourceY,
+                playerHealthAfter: health?.health ?? 0,
+                playerShieldAfter: typeof this.player?.getShield === 'function' ? this.player.getShield() : 0
+            };
+
             if (source && this.player) {
-                const dx = this.player.x - source.x;
-                const dy = this.player.y - source.y;
+                const sx = typeof source.x === 'number' ? source.x : this.player.x;
+                const sy = typeof source.y === 'number' ? source.y : this.player.y;
+                const dx = this.player.x - sx;
+                const dy = this.player.y - sy;
                 this.camera.punch(dx, dy, 6);
             } else {
                 this.camera.punch(0, -1, 4);
@@ -201,37 +265,136 @@ export class GameScene extends Scene {
         });
 
         eventBus.on(GameEvents.PLAYER_DIED, () => {
-            this._emitGameOver('You were overwhelmed. Start again?');
+            const message = this._formatDeathMessage('You were overwhelmed. Start again?');
+            this._emitGameOver(message);
         });
+    }
+
+    _extractSourceDebugInfo(source: unknown) {
+        let sourceType = 'unknown';
+        let sourceId: number | null = null;
+        let sourceX: number | null = null;
+        let sourceY: number | null = null;
+
+        if (source && typeof source === 'object') {
+            const candidate = source as {
+                type?: unknown;
+                name?: unknown;
+                id?: unknown;
+                x?: unknown;
+                y?: unknown;
+            };
+            if (typeof candidate.type === 'string' && candidate.type.length > 0) {
+                sourceType = candidate.type;
+            } else if (typeof candidate.name === 'string' && candidate.name.length > 0) {
+                sourceType = candidate.name;
+            }
+            if (typeof candidate.id === 'number') {
+                sourceId = candidate.id;
+            }
+            if (typeof candidate.x === 'number') {
+                sourceX = candidate.x;
+            }
+            if (typeof candidate.y === 'number') {
+                sourceY = candidate.y;
+            }
+        }
+
+        return { sourceType, sourceId, sourceX, sourceY };
+    }
+
+    _formatDeathDebug(debug?: DeathDebugInfo | null) {
+        if (!debug) return '';
+
+        const parts: string[] = [];
+        parts.push(`reason=${debug.reason}`);
+        if (debug.sourceType) {
+            parts.push(`source=${debug.sourceType}${typeof debug.sourceId === 'number' ? `#${debug.sourceId}` : ''}`);
+        }
+        if (typeof debug.incomingDamage === 'number') {
+            parts.push(`incoming=${debug.incomingDamage}`);
+        }
+        if (typeof debug.healthBefore === 'number' || typeof debug.healthAfter === 'number') {
+            parts.push(`hp=${Math.round(debug.healthBefore ?? 0)}->${Math.round(debug.healthAfter ?? 0)}`);
+        }
+        if (typeof debug.shieldBefore === 'number' || typeof debug.shieldAfter === 'number') {
+            parts.push(`shield=${Math.round(debug.shieldBefore ?? 0)}->${Math.round(debug.shieldAfter ?? 0)}`);
+        }
+        if (typeof debug.playerX === 'number' && typeof debug.playerY === 'number') {
+            parts.push(`pos=(${Math.round(debug.playerX)}, ${Math.round(debug.playerY)})`);
+        }
+        if (typeof debug.time === 'number') {
+            parts.push(`t=${debug.time.toFixed(2)}s`);
+        }
+        return parts.join(' | ');
+    }
+
+    _formatDeathMessage(fallback: string) {
+        if (this.deathDebugInfo?.sourceType) {
+            return `Felled by ${this.deathDebugInfo.sourceType}. Start again?`;
+        }
+        if (this.lastDamageSnapshot?.sourceType && this.lastDamageSnapshot.sourceType !== 'unknown') {
+            return `Felled by ${this.lastDamageSnapshot.sourceType}. Start again?`;
+        }
+        return fallback;
+    }
+
+    _pushDebugLog(message: string) {
+        const timestamp = this.gameTime.toFixed(2);
+        this.debugLog.push(`[${timestamp}] ${message}`);
+        if (this.debugLog.length > 16) {
+            this.debugLog.shift();
+        }
     }
 
     _emitGameOver(message: string = 'You were overwhelmed. Start again?') {
         if (this.gameOverTriggered) return;
         this.gameOverTriggered = true;
 
-        const payload = {
+        const debugPayload: DeathDebugInfo = this.deathDebugInfo || {
+            reason: 'unknown',
+            sourceType: this.lastDamageSnapshot?.sourceType || 'unknown',
+            sourceId: this.lastDamageSnapshot?.sourceId ?? undefined,
+            incomingDamage: this.lastDamageSnapshot?.amount,
+            healthAfter: this.lastDamageSnapshot?.playerHealthAfter,
+            shieldAfter: this.lastDamageSnapshot?.playerShieldAfter,
+            playerX: this.player?.x,
+            playerY: this.player?.y,
+            time: this.gameTime
+        };
+
+        const payload: GameOverPayload = {
             time: this.gameTime,
             kills: this.killCount,
             level: this.player?.level || 1,
             damageDealt: this.damageDealt,
             gemsCollected: this.gemsCollected,
-            message
+            message,
+            debug: debugPayload
         };
+        this.lastGameOverPayload = payload;
+        this._pushDebugLog(`GAME_OVER -> ${this._formatDeathDebug(debugPayload)}`);
+        console.warn('[Darkmoon] Game over diagnostics', payload);
 
         // End the game loop deterministically.
         this.game.endGame();
         eventBus.emit(GameEvents.GAME_OVER, payload);
         this._forceShowGameOverOverlay(payload);
+        this._ensureGameOverOverlayVisible(payload);
     }
 
-    _forceShowGameOverOverlay(data: {
-        time?: number;
-        kills?: number;
-        level?: number;
-        damageDealt?: number;
-        gemsCollected?: number;
-        message?: string;
-    }) {
+    _ensureGameOverOverlayVisible(data: GameOverPayload, attempt: number = 0) {
+        const gameOver = document.getElementById('gameOverScreen');
+        const visible = !!gameOver && gameOver.style.display === 'flex' && !gameOver.classList.contains('hidden');
+        if (visible || attempt >= 12) return;
+
+        this._forceShowGameOverOverlay(data);
+        window.setTimeout(() => {
+            this._ensureGameOverOverlayVisible(data, attempt + 1);
+        }, 80);
+    }
+
+    _forceShowGameOverOverlay(data: GameOverPayload) {
         const gameOver = document.getElementById('gameOverScreen');
         if (gameOver) {
             gameOver.classList.remove('hidden');
@@ -244,6 +407,7 @@ export class GameScene extends Scene {
         const damageEl = document.getElementById('finalDamage');
         const gemsEl = document.getElementById('finalGems');
         const messageEl = document.getElementById('deathMessage');
+        const debugEl = document.getElementById('deathDebug');
 
         if (timeEl && data.time !== undefined) {
             const minutes = Math.floor(data.time / 60);
@@ -269,6 +433,12 @@ export class GameScene extends Scene {
 
         if (messageEl) {
             messageEl.textContent = data.message || 'You died.';
+        }
+
+        if (debugEl) {
+            const debugText = this._formatDeathDebug(data.debug);
+            debugEl.textContent = debugText;
+            debugEl.style.display = debugText ? 'block' : 'none';
         }
     }
 
@@ -342,6 +512,11 @@ export class GameScene extends Scene {
         this.playerContactDamageCooldown = 0;
         this.gameOverTriggered = false;
         this.playerSpawnInvulnerabilityTimer = 1.2;
+        this.lastDamageSnapshot = null;
+        this.deathDebugInfo = null;
+        this.lastGameOverPayload = null;
+        this.debugLog = [];
+        this._pushDebugLog('Scene entered');
     }
 
     onExit() {
@@ -356,6 +531,10 @@ export class GameScene extends Scene {
         this.playerContactDamageCooldown = 0;
         this.gameOverTriggered = false;
         this.playerSpawnInvulnerabilityTimer = 0;
+        this.lastDamageSnapshot = null;
+        this.deathDebugInfo = null;
+        this.lastGameOverPayload = null;
+        this._pushDebugLog('Scene exited');
     }
 
     _generateWorld() {
@@ -918,11 +1097,42 @@ export class GameScene extends Scene {
             ) {
                 const armorMult = this.player.getDamageTakenMultiplier();
                 const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
+                const healthBefore = health.health;
+                const shieldBefore = this.player.getShield();
                 const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
                 this.playerContactDamageCooldown = this.playerContactDamageInterval;
 
                 if (remainingDamage > 0) {
                     health.takeDamage(remainingDamage, enemy);
+                }
+
+                const healthAfter = health.health;
+                const shieldAfter = this.player.getShield();
+                this.lastDamageSnapshot = {
+                    time: this.gameTime,
+                    amount: remainingDamage,
+                    sourceType: enemy.type || 'enemy',
+                    sourceId: enemy.id,
+                    sourceX: enemy.x,
+                    sourceY: enemy.y,
+                    playerHealthAfter: healthAfter,
+                    playerShieldAfter: shieldAfter
+                };
+
+                if (health.isDead || healthAfter <= 0) {
+                    this.deathDebugInfo = {
+                        reason: 'enemy_contact',
+                        sourceType: enemy.type || 'enemy',
+                        sourceId: enemy.id,
+                        incomingDamage,
+                        healthBefore,
+                        healthAfter,
+                        shieldBefore,
+                        shieldAfter,
+                        playerX: this.player.x,
+                        playerY: this.player.y,
+                        time: this.gameTime
+                    };
                 }
             }
         }
@@ -961,13 +1171,128 @@ export class GameScene extends Scene {
         ctx.restore();
     }
 
+    _validatePlayerState() {
+        if (!this.player || this.player.destroyed) {
+            this.deathDebugInfo = {
+                reason: 'player_entity_missing',
+                playerX: this.player?.x,
+                playerY: this.player?.y,
+                time: this.gameTime
+            };
+            this._emitGameOver(this._formatDeathMessage('The player entity vanished. Start again?'));
+            return true;
+        }
+
+        if (!Number.isFinite(this.player.x) || !Number.isFinite(this.player.y)) {
+            this.deathDebugInfo = {
+                reason: 'player_position_invalid',
+                playerX: this.player.x,
+                playerY: this.player.y,
+                time: this.gameTime
+            };
+            this._emitGameOver('Player position became invalid (NaN/Infinity). Start again?');
+            return true;
+        }
+
+        const health = this.player.getComponent<HealthComponent>('HealthComponent');
+        if (!health) {
+            this.deathDebugInfo = {
+                reason: 'player_health_component_missing',
+                playerX: this.player.x,
+                playerY: this.player.y,
+                time: this.gameTime
+            };
+            this._emitGameOver('Player health component vanished. Start again?');
+            return true;
+        }
+
+        if (health.isDead) {
+            if (!this.deathDebugInfo) {
+                this.deathDebugInfo = {
+                    reason: 'health_component_dead',
+                    sourceType: this.lastDamageSnapshot?.sourceType || 'unknown',
+                    sourceId: this.lastDamageSnapshot?.sourceId ?? undefined,
+                    incomingDamage: this.lastDamageSnapshot?.amount,
+                    healthAfter: health.health,
+                    shieldAfter: this.player.getShield(),
+                    playerX: this.player.x,
+                    playerY: this.player.y,
+                    time: this.gameTime
+                };
+            }
+            this._emitGameOver(this._formatDeathMessage('You were overwhelmed. Start again?'));
+            return true;
+        }
+
+        return false;
+    }
+
+    _drawDebugOverlay(ctx: CanvasRenderingContext2D) {
+        if (!this.debugOverlayEnabled) return;
+
+        const health = this.player?.getComponent<HealthComponent>('HealthComponent');
+        const shield = this.player?.getShield?.() ?? 0;
+        const lines: string[] = [
+            'Debug Overlay (F3)',
+            `time=${this.gameTime.toFixed(2)} wave=${this.spawnSystem?.waveNumber ?? 0} enemies=${this.spawnSystem?.getEnemies().length ?? 0}`,
+            `player=(${this.player ? this.player.x.toFixed(1) : 'n/a'}, ${this.player ? this.player.y.toFixed(1) : 'n/a'})`,
+            `hp=${health ? `${Math.round(health.health)}/${Math.round(health.maxHealth)}` : 'missing'} shield=${Math.round(shield)}`,
+            `flags: paused=${this.game.paused} over=${this.gameOverTriggered} levelup=${this.showingLevelUp}`
+        ];
+
+        if (this.lastDamageSnapshot) {
+            lines.push(
+                `last-hit: ${this.lastDamageSnapshot.sourceType}${this.lastDamageSnapshot.sourceId !== null ? `#${this.lastDamageSnapshot.sourceId}` : ''} dmg=${this.lastDamageSnapshot.amount} hpAfter=${Math.round(this.lastDamageSnapshot.playerHealthAfter)}`
+            );
+        }
+
+        if (this.deathDebugInfo) {
+            lines.push(`death: ${this._formatDeathDebug(this.deathDebugInfo)}`);
+        }
+
+        if (this.debugLog.length > 0) {
+            lines.push('events:');
+            for (const entry of this.debugLog.slice(-6)) {
+                lines.push(`- ${entry}`);
+            }
+        }
+
+        ctx.save();
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.font = '12px monospace';
+
+        const padding = 8;
+        const lineHeight = 15;
+        const width = Math.min(this.game.canvas.width - 20, 700);
+        const height = padding * 2 + lines.length * lineHeight;
+
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.78)';
+        ctx.fillRect(10, 10, width, height);
+        ctx.strokeStyle = 'rgba(120, 220, 255, 0.9)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(10.5, 10.5, width - 1, height - 1);
+
+        ctx.fillStyle = '#d8f5ff';
+        let y = 10 + padding;
+        for (const line of lines) {
+            ctx.fillText(line, 10 + padding, y);
+            y += lineHeight;
+        }
+
+        ctx.restore();
+    }
+
     update(deltaTime: number) {
         // Update input (even if a level-up overlay is showing)
         this.inputManager.update();
 
-        const health = this.player.getComponent<HealthComponent>('HealthComponent');
-        if (health?.isDead) {
-            this._emitGameOver('You were overwhelmed. Start again?');
+        if (this.inputManager.isActionPressed('debugToggle')) {
+            this.debugOverlayEnabled = !this.debugOverlayEnabled;
+            this._pushDebugLog(`debug_overlay=${this.debugOverlayEnabled ? 'on' : 'off'}`);
+        }
+
+        if (this._validatePlayerState()) {
             return;
         }
 
@@ -1086,6 +1411,8 @@ export class GameScene extends Scene {
 
         // Draw HUD
         this.hud.draw(ctx);
+
+        this._drawDebugOverlay(ctx);
 
         // Draw level up screen if showing
         if (this.showingLevelUp) {

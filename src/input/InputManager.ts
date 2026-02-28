@@ -90,7 +90,8 @@ export class InputManager {
             special: 'KeyK',
             pause: 'Escape',
             inventory: 'KeyI',
-            restart: 'KeyR'
+            restart: 'KeyR',
+            debugToggle: 'F3'
         };
 
         // Merge with config

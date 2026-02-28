@@ -18,6 +18,21 @@ interface GameOverData {
     damageDealt?: number;
     gemsCollected?: number;
     message?: string;
+    debug?: GameOverDebugData;
+}
+
+interface GameOverDebugData {
+    reason?: string;
+    sourceType?: string;
+    sourceId?: number;
+    incomingDamage?: number;
+    healthBefore?: number;
+    healthAfter?: number;
+    shieldBefore?: number;
+    shieldAfter?: number;
+    playerX?: number;
+    playerY?: number;
+    time?: number;
 }
 
 type AudioMode = 'authored' | 'procedural';
@@ -49,6 +64,7 @@ class Application {
     sceneManager: SceneManager | null;
     audioSystem: AudioBackend | null;
     audioPreferences: AudioPreferences;
+    lastGameOverData: GameOverData | null;
 
     constructor() {
         this.game = null;
@@ -62,6 +78,7 @@ class Application {
             musicVolume: 0.35,
             sfxVolume: 0.85
         };
+        this.lastGameOverData = null;
     }
 
     async init() {
@@ -206,6 +223,7 @@ class Application {
             this.hidePauseOverlay();
             this.hideGameOver();
             this.hideMenu();
+            this.lastGameOverData = null;
             eventBus.emit(GameEvents.GAME_RESTART);
         };
 
@@ -216,6 +234,7 @@ class Application {
                 this.audioSystem?.playUiSelect();
                 void this.audioSystem?.unlock();
                 this.hideMenu();
+                this.lastGameOverData = null;
                 this.startGame();
             });
         }
@@ -228,8 +247,10 @@ class Application {
 
         // Listen for game over
         eventBus.on(GameEvents.GAME_OVER, (data: GameOverData) => {
+            this.lastGameOverData = data;
             this.hidePauseOverlay();
             this.showGameOver(data);
+            this.ensureGameOverVisible(data);
         });
 
         // Safety fallback: if a death event occurs without a game-over event, force one.
@@ -237,10 +258,27 @@ class Application {
             queueMicrotask(() => {
                 if (!this.isGameOverVisible()) {
                     eventBus.emit(GameEvents.GAME_OVER, {
-                        message: 'You were overwhelmed. Start again?'
+                        message: 'You were overwhelmed. Start again?',
+                        debug: {
+                            reason: 'player_died_without_visible_game_over'
+                        }
                     });
                 }
             });
+
+            // Give DOM/layout one more chance before forcing a fallback game-over payload.
+            window.setTimeout(() => {
+                if (!this.isGameOverVisible()) {
+                    const fallback = this.lastGameOverData || {
+                        message: 'You were overwhelmed. Start again?',
+                        debug: {
+                            reason: 'player_died_fallback_timeout'
+                        }
+                    };
+                    this.showGameOver(fallback);
+                    this.ensureGameOverVisible(fallback);
+                }
+            }, 140);
         });
 
         // Pause overlay controls
@@ -401,6 +439,7 @@ class Application {
 
     startGame() {
         void this.audioSystem?.unlock();
+        this.lastGameOverData = null;
 
         // Switch to game scene
         this.sceneManager?.switchTo('game', {}, false, 'wipe');
@@ -429,6 +468,11 @@ class Application {
             gameOver.classList.add('hidden');
             gameOver.style.display = 'none';
         }
+        const debugEl = document.getElementById('deathDebug');
+        if (debugEl) {
+            debugEl.textContent = '';
+            debugEl.style.display = 'none';
+        }
     }
 
     showPauseOverlay() {
@@ -453,6 +497,39 @@ class Application {
         return gameOver.style.display === 'flex' && !gameOver.classList.contains('hidden');
     }
 
+    ensureGameOverVisible(data: GameOverData = {}, attempt: number = 0) {
+        if (this.isGameOverVisible()) return;
+        if (attempt >= 12) return;
+
+        this.showGameOver(data);
+        window.setTimeout(() => {
+            this.ensureGameOverVisible(data, attempt + 1);
+        }, 80);
+    }
+
+    formatGameOverDebug(debug?: GameOverDebugData) {
+        if (!debug) return '';
+
+        const parts: string[] = [];
+        if (debug.reason) parts.push(`reason=${debug.reason}`);
+        if (debug.sourceType) parts.push(`source=${debug.sourceType}${typeof debug.sourceId === 'number' ? `#${debug.sourceId}` : ''}`);
+        if (typeof debug.incomingDamage === 'number') parts.push(`incoming=${debug.incomingDamage}`);
+        if (typeof debug.healthBefore === 'number' || typeof debug.healthAfter === 'number') {
+            parts.push(`hp=${Math.round(debug.healthBefore ?? 0)}->${Math.round(debug.healthAfter ?? 0)}`);
+        }
+        if (typeof debug.shieldBefore === 'number' || typeof debug.shieldAfter === 'number') {
+            parts.push(`shield=${Math.round(debug.shieldBefore ?? 0)}->${Math.round(debug.shieldAfter ?? 0)}`);
+        }
+        if (typeof debug.playerX === 'number' && typeof debug.playerY === 'number') {
+            parts.push(`pos=(${Math.round(debug.playerX)}, ${Math.round(debug.playerY)})`);
+        }
+        if (typeof debug.time === 'number') {
+            parts.push(`t=${debug.time.toFixed(2)}s`);
+        }
+
+        return parts.join(' | ');
+    }
+
     showGameOver(data: GameOverData = {}) {
         const gameOver = document.getElementById('gameOverScreen');
         if (gameOver) {
@@ -466,6 +543,7 @@ class Application {
             const damageEl = document.getElementById('finalDamage');
             const gemsEl = document.getElementById('finalGems');
             const messageEl = document.getElementById('deathMessage');
+            const debugEl = document.getElementById('deathDebug');
 
             if (timeEl && data.time !== undefined) {
                 const minutes = Math.floor(data.time / 60);
@@ -491,6 +569,12 @@ class Application {
 
             if (messageEl) {
                 messageEl.textContent = data.message || 'You died.';
+            }
+
+            if (debugEl) {
+                const debugText = this.formatGameOverDebug(data.debug);
+                debugEl.textContent = debugText;
+                debugEl.style.display = debugText ? 'block' : 'none';
             }
         }
     }
