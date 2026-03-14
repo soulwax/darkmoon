@@ -570,6 +570,14 @@ export class SpawnSystem {
         return this.enemies;
     }
 
+    getXPGems() {
+        return this.xpGems;
+    }
+
+    getPowerUps() {
+        return this.powerUps;
+    }
+
     /**
      * Clear all spawned entities
      */

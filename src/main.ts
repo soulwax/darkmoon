@@ -9,6 +9,7 @@ import { ConfigLoader } from './config/ConfigLoader';
 import { GameConfig } from './config/GameConfig';
 import { DebugLogger } from './core/DebugLogger';
 import { eventBus, GameEvents } from './core/EventBus';
+import { BrowserPlaytestHarness } from './playtest/BrowserPlaytestHarness';
 import { GameScene } from './scenes/GameScene';
 import { SceneManager } from './scenes/SceneManager';
 
@@ -36,6 +37,8 @@ interface GameOverDebugData {
     playerX?: number;
     playerY?: number;
     time?: number;
+    errorName?: string;
+    errorMessage?: string;
 }
 
 type AudioMode = 'authored' | 'procedural';
@@ -63,20 +66,23 @@ type RunPhase = 'menu' | 'playing' | 'gameover';
 
 const AUDIO_PREFS_STORAGE_KEY = 'darkmoon.audio.preferences.v1';
 
-class Application {
+export class Application {
     game: Game | null;
     config: GameConfig | null;
     sceneManager: SceneManager | null;
     audioSystem: AudioBackend | null;
+    playtest: BrowserPlaytestHarness | null;
     audioPreferences: AudioPreferences;
     lastGameOverData: GameOverData | null;
     phase: RunPhase;
+    globalErrorHandlersInstalled: boolean;
 
     constructor() {
         this.game = null;
         this.config = null;
         this.sceneManager = null;
         this.audioSystem = null;
+        this.playtest = null;
         this.audioPreferences = {
             mode: 'authored',
             enabled: true,
@@ -86,6 +92,7 @@ class Application {
         };
         this.lastGameOverData = null;
         this.phase = 'menu';
+        this.globalErrorHandlersInstalled = false;
     }
 
     async init() {
@@ -127,6 +134,7 @@ class Application {
         this.audioSystem = this.createAudioSystem(this.audioPreferences.mode, this.audioPreferences);
         this.audioSystem.setEnabled(this.audioPreferences.enabled);
         this.audioSystem.setVolumes(this.audioPreferences);
+        this.installGlobalErrorHandlers();
 
         // Create game instance
         this.game = new Game(canvas, this.config);
@@ -147,23 +155,118 @@ class Application {
             sceneManager: this.sceneManager
         });
 
+        this.playtest = new BrowserPlaytestHarness({
+            startGame: (reason?: string) => this.startGame(reason),
+            restartGame: (reason?: string) => this.restartGame(reason),
+            getCurrentGameScene: () => this.getCurrentGameScene(),
+            getPhase: () => this.getPhase(),
+            isGameOverVisible: () => this.isGameOverVisible()
+        });
+
         // Debug/dev convenience: auto-start game via URL param (?autostart=1)
         const params = new URLSearchParams(window.location.search);
         const hasAutostart = params.has('autostart');
+        const playtestScenario = params.get('playtest');
+        const rawPlaytestDuration = params.get('playtestDuration');
+        const parsedPlaytestDuration = rawPlaytestDuration ? Number(rawPlaytestDuration) : undefined;
+        const playtestDuration = typeof parsedPlaytestDuration === 'number' && Number.isFinite(parsedPlaytestDuration) && parsedPlaytestDuration > 0
+            ? parsedPlaytestDuration
+            : undefined;
 
         // Setup UI event handlers
         this.setupUI();
-        if (!hasAutostart) {
+        if (!hasAutostart && !playtestScenario) {
             this.showMenu();
         }
         this.hideGameOver();
         this.setPhase('menu', 'init_complete');
 
-        if (hasAutostart) {
+        if (playtestScenario) {
+            void this.playtest?.run({
+                scenarioId: playtestScenario,
+                durationSeconds: playtestDuration
+            });
+        } else if (hasAutostart) {
             this.startGame('autostart_param');
         }
 
         console.log('Darkmoon ready!');
+    }
+
+    normalizeErrorLike(error: unknown) {
+        if (error instanceof Error) {
+            return {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            };
+        }
+
+        return {
+            name: 'NonErrorThrow',
+            message: typeof error === 'string' ? error : String(error),
+            stack: undefined as string | undefined
+        };
+    }
+
+    installGlobalErrorHandlers() {
+        if (this.globalErrorHandlersInstalled) return;
+        this.globalErrorHandlersInstalled = true;
+
+        window.addEventListener('error', (event) => {
+            const error = event.error instanceof Error
+                ? event.error
+                : new Error(event.message || 'Unknown window error');
+            this.handleRuntimeException('window_error', error, {
+                filename: event.filename || null,
+                lineno: event.lineno || null,
+                colno: event.colno || null
+            });
+        });
+
+        window.addEventListener('unhandledrejection', (event) => {
+            const reason = event.reason;
+            const error = reason instanceof Error
+                ? reason
+                : new Error(typeof reason === 'string' ? reason : 'Unhandled promise rejection');
+            this.handleRuntimeException('unhandled_rejection', error, {
+                reason
+            });
+        });
+    }
+
+    handleRuntimeException(source: 'window_error' | 'unhandled_rejection', error: unknown, meta?: unknown) {
+        const normalized = this.normalizeErrorLike(error);
+        const gameTime = this.game?.getGameTime?.() ?? undefined;
+
+        DebugLogger.error('Application', 'runtime_exception_captured', {
+            source,
+            phase: this.phase,
+            gameTime: typeof gameTime === 'number' ? Number(gameTime.toFixed(3)) : null,
+            meta: meta ?? null,
+            error: normalized
+        });
+
+        if (this.phase !== 'playing') return;
+        if (this.isGameOverVisible()) return;
+
+        const payload: GameOverData = {
+            time: gameTime,
+            kills: this.game?.killCount ?? undefined,
+            message: 'A runtime error interrupted the run. Start again?',
+            debug: {
+                reason: 'runtime_exception',
+                sourceType: source,
+                time: gameTime,
+                errorName: normalized.name,
+                errorMessage: normalized.message
+            }
+        };
+
+        this.lastGameOverData = payload;
+        eventBus.emit(GameEvents.GAME_OVER, payload);
+        this.showGameOver(payload);
+        this.ensureGameOverVisible(payload);
     }
 
     createAudioSystem(mode: AudioMode, settings: AudioSettingsLike): AudioBackend {
@@ -220,6 +323,15 @@ class Application {
         if (this.audioPreferences.enabled) {
             void this.audioSystem.unlock();
         }
+    }
+
+    getCurrentGameScene() {
+        const scene = this.sceneManager?.getCurrent();
+        return scene instanceof GameScene ? scene : null;
+    }
+
+    getPhase() {
+        return this.phase;
     }
 
     setPhase(next: RunPhase, reason: string, data?: unknown) {
@@ -534,6 +646,9 @@ class Application {
         if (typeof debug.time === 'number') {
             parts.push(`t=${debug.time.toFixed(2)}s`);
         }
+        if (debug.errorName || debug.errorMessage) {
+            parts.push(`error=${debug.errorName || 'Error'}:${debug.errorMessage || 'unknown'}`);
+        }
 
         return parts.join(' | ');
     }
@@ -591,6 +706,7 @@ class Application {
 // Bootstrap application when DOM is ready
 document.addEventListener('DOMContentLoaded', async () => {
     const app = new Application();
+    window.Darkmoon = app;
     try {
         await app.init();
     } catch (error) {

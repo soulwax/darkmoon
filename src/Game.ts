@@ -2,8 +2,9 @@
 
 import type { AssetLoader } from './assets/AssetLoader';
 import { GameConfig } from './config/GameConfig';
+import { DebugLogger } from './core/DebugLogger';
 import { eventBus, GameEvents } from './core/EventBus';
-import { GameLoop } from './core/GameLoop';
+import { GameLoop, type GameLoopFrameErrorContext } from './core/GameLoop';
 import type { Camera } from './graphics/Camera';
 import type { Renderer } from './graphics/Renderer';
 import type { InputManager } from './input/InputManager';
@@ -66,7 +67,8 @@ export class Game {
         this.gameLoop = new GameLoop({
             targetFPS: config.graphics.targetFPS,
             update: (dt) => this.update(dt),
-            draw: (alpha) => this.draw(alpha)
+            draw: (alpha) => this.draw(alpha),
+            onFrameError: (error, context) => this._handleLoopError(error, context)
         });
 
         // Bind event handlers
@@ -84,6 +86,56 @@ export class Game {
             this.killCount++;
         });
 
+    }
+
+    _normalizeError(error: unknown) {
+        if (error instanceof Error) {
+            return {
+                name: error.name,
+                message: error.message,
+                stack: error.stack
+            };
+        }
+
+        return {
+            name: 'NonErrorThrow',
+            message: typeof error === 'string' ? error : String(error),
+            stack: undefined as string | undefined
+        };
+    }
+
+    _handleLoopError(error: unknown, context: GameLoopFrameErrorContext) {
+        const normalizedError = this._normalizeError(error);
+        DebugLogger.error('Game', 'frame_loop_exception', {
+            phase: context.phase,
+            timestamp: Number(context.timestamp.toFixed(3)),
+            deltaTime: Number(context.deltaTime.toFixed(6)),
+            accumulator: Number(context.accumulator.toFixed(6)),
+            alpha: Number(context.alpha.toFixed(4)),
+            gameTime: Number(context.gameTime.toFixed(3)),
+            frameCount: context.frameCount,
+            paused: context.paused,
+            error: normalizedError
+        });
+
+        // Ensure core state is terminal even if the frame loop crashed.
+        this.running = false;
+        this.gameOver = true;
+
+        const payload = {
+            time: context.gameTime,
+            kills: this.killCount,
+            message: 'A runtime error interrupted the run. Start again?',
+            debug: {
+                reason: 'runtime_exception',
+                sourceType: context.phase,
+                time: context.gameTime,
+                errorName: normalizedError.name,
+                errorMessage: normalizedError.message
+            }
+        };
+
+        eventBus.emit(GameEvents.GAME_OVER, payload);
     }
 
     /**

@@ -229,9 +229,18 @@ export const MathUtils = {
 
     // Normalize angle to [-PI, PI]
     normalizeAngle(angle: number) {
-        while (angle > Math.PI) angle -= Math.PI * 2;
-        while (angle < -Math.PI) angle += Math.PI * 2;
-        return angle;
+        if (!Number.isFinite(angle)) {
+            // Guard against NaN/Infinity inputs from unstable simulations or user data.
+            return 0;
+        }
+
+        const twoPi = Math.PI * 2;
+        let normalized = angle % twoPi;
+
+        if (normalized > Math.PI) normalized -= twoPi;
+        if (normalized < -Math.PI) normalized += twoPi;
+
+        return normalized;
     },
 
     // Easing functions

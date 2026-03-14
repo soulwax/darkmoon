@@ -1,28 +1,33 @@
 // File: src/scenes/GameScene.ts
 
-import { Scene } from './Scene';
-import { Player } from '../entities/Player';
+import type { Game } from '../Game';
+import type { AssetLoader } from '../assets/AssetLoader';
+import type { SpriteSheet } from '../assets/SpriteSheet';
+import type { GameConfig } from '../config/GameConfig';
+import { DebugLogger } from '../core/DebugLogger';
+import { eventBus, GameEvents } from '../core/EventBus';
+import type { Component } from '../ecs/Component';
+import type { ColliderComponent } from '../ecs/components/ColliderComponent';
+import type { HealthComponent } from '../ecs/components/HealthComponent';
+import type { MovementComponent } from '../ecs/components/MovementComponent';
 import type { Enemy } from '../entities/Enemy';
+import { Player } from '../entities/Player';
 import { Camera } from '../graphics/Camera';
 import { TileMap } from '../graphics/TileMap';
 import { InputManager } from '../input/InputManager';
-import { SpawnSystem } from '../systems/SpawnSystem';
+import type {
+    PlaytestPickupSnapshot,
+    PlaytestSceneSnapshot,
+    PlaytestUpgradeOptionSnapshot
+} from '../playtest/PlaytestTypes';
 import { ParticleSystem } from '../systems/ParticleSystem';
-import { Sword } from '../weapons/Sword';
-import { Longsword } from '../weapons/Longsword';
-import { DebugLogger } from '../core/DebugLogger';
-import { eventBus, GameEvents } from '../core/EventBus';
-import { HUD } from '../ui/HUD';
-import { LevelUpScreen } from '../ui/LevelUpScreen';
+import { SpawnSystem } from '../systems/SpawnSystem';
 import { UpgradeSystem, type UpgradeOption } from '../systems/UpgradeSystem';
-import type { Game } from '../Game';
-import type { GameConfig } from '../config/GameConfig';
-import type { AssetLoader } from '../assets/AssetLoader';
-import type { SpriteSheet } from '../assets/SpriteSheet';
-import type { Component } from '../ecs/Component';
-import type { HealthComponent } from '../ecs/components/HealthComponent';
-import type { ColliderComponent } from '../ecs/components/ColliderComponent';
-import type { MovementComponent } from '../ecs/components/MovementComponent';
+import { HUD } from '../ui/HUD';
+import { LevelUpScreen, type UpgradeOptionBase } from '../ui/LevelUpScreen';
+import { Longsword } from '../weapons/Longsword';
+import { Sword } from '../weapons/Sword';
+import { Scene } from './Scene';
 
 interface WorldChest {
     tileX: number;
@@ -132,6 +137,7 @@ export class GameScene extends Scene {
     lastProximityBand: string;
     lastProximityLogTime: number;
     lastContactGateLogTime: number;
+    playtestBeforeUpdateListeners: Array<(deltaTime: number) => void>;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -174,6 +180,7 @@ export class GameScene extends Scene {
         this.lastProximityBand = 'none';
         this.lastProximityLogTime = -Infinity;
         this.lastContactGateLogTime = -Infinity;
+        this.playtestBeforeUpdateListeners = [];
 
         this._setupEventListeners();
     }
@@ -420,6 +427,158 @@ export class GameScene extends Scene {
         return 'far';
     }
 
+    addPlaytestBeforeUpdateListener(listener: (deltaTime: number) => void) {
+        this.playtestBeforeUpdateListeners.push(listener);
+
+        return () => {
+            this.playtestBeforeUpdateListeners = this.playtestBeforeUpdateListeners.filter(
+                (candidate) => candidate !== listener
+            );
+        };
+    }
+
+    _getNearestGemSnapshot(): PlaytestPickupSnapshot | null {
+        if (!this.player || !this.spawnSystem) return null;
+
+        let nearestGem: PlaytestPickupSnapshot | null = null;
+        let nearestDistanceSq = Number.POSITIVE_INFINITY;
+
+        for (const gem of this.spawnSystem.getXPGems()) {
+            if (!gem || gem.destroyed || gem.collected) continue;
+
+            const dx = gem.x - this.player.x;
+            const dy = gem.y - this.player.y;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq < nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                nearestGem = {
+                    x: gem.x,
+                    y: gem.y,
+                    distance: Number(Math.sqrt(distanceSq).toFixed(2)),
+                    value: gem.value
+                };
+            }
+        }
+
+        return nearestGem;
+    }
+
+    _getNearestPowerUpSnapshot(): PlaytestPickupSnapshot | null {
+        if (!this.player || !this.spawnSystem) return null;
+
+        let nearestPowerUp: PlaytestPickupSnapshot | null = null;
+        let nearestDistanceSq = Number.POSITIVE_INFINITY;
+
+        for (const powerUp of this.spawnSystem.getPowerUps()) {
+            if (!powerUp || powerUp.destroyed || powerUp.collected) continue;
+
+            const dx = powerUp.x - this.player.x;
+            const dy = powerUp.y - this.player.y;
+            const distanceSq = dx * dx + dy * dy;
+
+            if (distanceSq < nearestDistanceSq) {
+                nearestDistanceSq = distanceSq;
+                nearestPowerUp = {
+                    x: powerUp.x,
+                    y: powerUp.y,
+                    distance: Number(Math.sqrt(distanceSq).toFixed(2)),
+                    type: powerUp.type
+                };
+            }
+        }
+
+        return nearestPowerUp;
+    }
+
+    _getPlaytestUpgradeOptions(): PlaytestUpgradeOptionSnapshot[] {
+        return this.levelUpScreen
+            .getOptions<UpgradeOptionBase>()
+            .map((option, index) => ({
+                index,
+                name: option.name,
+                description: option.description,
+                rarity: typeof option.rarity === 'string' ? option.rarity : undefined,
+                type: typeof option.type === 'string' ? option.type : undefined
+            }));
+    }
+
+    getPlaytestSnapshot(): PlaytestSceneSnapshot {
+        const health = this.player?.getComponent<HealthComponent>('HealthComponent');
+        if (!this.player || !health || !this.spawnSystem) {
+            throw new Error('GameScene playtest snapshot requested before scene initialization');
+        }
+
+        const enemies = this.spawnSystem.getEnemies().filter((enemy) => !enemy.destroyed);
+        const nearestEnemy = this._getNearestEnemySnapshot(enemies);
+        const maxShield = this.player.getMaxShield();
+        const shield = this.player.getShield();
+
+        return {
+            phase: this.gameOverTriggered ? 'gameover' : 'playing',
+            time: Number(this.gameTime.toFixed(3)),
+            killCount: this.killCount,
+            damageDealt: this.damageDealt,
+            gemsCollected: this.gemsCollected,
+            wave: this.spawnSystem.waveNumber,
+            enemiesAlive: enemies.length,
+            xpGemsAlive: this.spawnSystem.getXPGems().filter((gem) => !gem.destroyed && !gem.collected).length,
+            powerUpsAlive: this.spawnSystem.getPowerUps().filter((powerUp) => !powerUp.destroyed && !powerUp.collected).length,
+            player: {
+                x: Number(this.player.x.toFixed(2)),
+                y: Number(this.player.y.toFixed(2)),
+                health: health.health,
+                maxHealth: health.maxHealth,
+                healthRatio: Number(health.getHealthPercent().toFixed(4)),
+                shield,
+                maxShield,
+                shieldRatio: Number((maxShield > 0 ? shield / maxShield : 0).toFixed(4)),
+                level: this.player.level,
+                xp: this.player.xp,
+                xpToNextLevel: this.player.xpToNextLevel,
+                pickupRange: this.player.getPickupRange(),
+                invulnerable: health.invulnerable,
+                weapons: this.player.weapons.map((weapon) => ({
+                    name: weapon.name,
+                    level: weapon.level,
+                    maxLevel: weapon.maxLevel
+                }))
+            },
+            nearestEnemy: nearestEnemy
+                ? {
+                    id: nearestEnemy.enemyId,
+                    type: nearestEnemy.enemyType,
+                    x: nearestEnemy.enemyX,
+                    y: nearestEnemy.enemyY,
+                    distance: nearestEnemy.distance,
+                    damage: nearestEnemy.enemyDamage
+                }
+                : null,
+            nearestGem: this._getNearestGemSnapshot(),
+            nearestPowerUp: this._getNearestPowerUpSnapshot(),
+            levelUp: {
+                visible: this.showingLevelUp && !!this.levelUpScreen?.visible,
+                options: this._getPlaytestUpgradeOptions()
+            },
+            gameOver: this.lastGameOverPayload
+                ? {
+                    visible: this.gameOverTriggered,
+                    message: this.lastGameOverPayload.message,
+                    reason: this.lastGameOverPayload.debug?.reason
+                }
+                : null,
+            debugTail: [...this.debugLog]
+        };
+    }
+
+    selectLevelUpOption(index: number) {
+        if (!this.showingLevelUp || !this.levelUpScreen?.visible) {
+            return false;
+        }
+
+        return this.levelUpScreen.selectOption(index);
+    }
+
     _trackEnemyProximity(enemies: Enemy[]) {
         const nearest = this._getNearestEnemySnapshot(enemies);
         if (!nearest) {
@@ -661,6 +820,7 @@ export class GameScene extends Scene {
         // Cleanup
         this.spawnSystem?.destroy();
         this.particleSystem?.clear();
+        this.inputManager?.clearVirtualActions();
         this.worldChests = [];
         this.nearestChest = null;
         this.enemyContactCooldowns.clear();
@@ -1003,16 +1163,55 @@ export class GameScene extends Scene {
         });
 
         const options = this.upgradeSystem.generateOptions(3);
-        this.levelUpScreen.show(options, (selected) => {
-            this.upgradeSystem.applyUpgrade(selected as UpgradeOption);
+        const handleSelection = (selected: UpgradeOptionBase) => {
+            try {
+                this.upgradeSystem.applyUpgrade(selected as UpgradeOption);
+                this.showingLevelUp = false;
+                this._pushDebugLog('level_up_selection_applied', 'info', {
+                    selected,
+                    level: this.player?.level ?? null,
+                    xp: this.player?.xp ?? null,
+                    xpToNextLevel: this.player?.xpToNextLevel ?? null
+                });
+            } catch (error) {
+                const err = error instanceof Error
+                    ? { name: error.name, message: error.message, stack: error.stack }
+                    : { name: 'NonErrorThrow', message: String(error), stack: null };
+                this._pushDebugLog('level_up_selection_failed', 'error', {
+                    selected,
+                    error: err
+                });
+
+                this.showingLevelUp = true;
+                try {
+                    this.levelUpScreen.show(options, handleSelection);
+                } catch (showError) {
+                    this.showingLevelUp = false;
+                    const showErr = showError instanceof Error
+                        ? { name: showError.name, message: showError.message, stack: showError.stack }
+                        : { name: 'NonErrorThrow', message: String(showError), stack: null };
+                    this._pushDebugLog('level_up_screen_restore_failed', 'error', {
+                        optionsCount: options.length,
+                        error: showErr
+                    });
+                    throw showError;
+                }
+            }
+        };
+
+        try {
+            this.levelUpScreen.show(options, handleSelection);
+        } catch (error) {
             this.showingLevelUp = false;
-            this._pushDebugLog('level_up_selection_applied', 'info', {
-                selected,
-                level: this.player?.level ?? null,
-                xp: this.player?.xp ?? null,
-                xpToNextLevel: this.player?.xpToNextLevel ?? null
+            const err = error instanceof Error
+                ? { name: error.name, message: error.message, stack: error.stack }
+                : { name: 'NonErrorThrow', message: String(error), stack: null };
+            this._pushDebugLog('level_up_screen_show_failed', 'error', {
+                optionsCount: options.length,
+                error: err
             });
-        });
+            throw error;
+        }
     }
 
     _getNearestClosedChest(maxDistance: number) {
@@ -1510,6 +1709,10 @@ export class GameScene extends Scene {
     }
 
     update(deltaTime: number) {
+        for (const listener of this.playtestBeforeUpdateListeners) {
+            listener(deltaTime);
+        }
+
         // Update input (even if a level-up overlay is showing)
         this.inputManager.update();
 
@@ -1522,7 +1725,19 @@ export class GameScene extends Scene {
             return;
         }
 
-        if (this.showingLevelUp) return;
+        if (this.showingLevelUp) {
+            // Fail-safe: recover if UI got hidden but scene lock flag stayed true.
+            if (!this.levelUpScreen?.visible) {
+                this._pushDebugLog('level_up_flag_desync_recovered', 'warn', {
+                    level: this.player?.level ?? null,
+                    xp: this.player?.xp ?? null,
+                    xpToNextLevel: this.player?.xpToNextLevel ?? null
+                });
+                this.showingLevelUp = false;
+            } else {
+                return;
+            }
+        }
 
         if (this.weaponShakeCooldown > 0) {
             this.weaponShakeCooldown -= deltaTime;

@@ -5,6 +5,19 @@ export interface GameLoopOptions {
     maxDeltaTime?: number;
     update?: (deltaTime: number) => void;
     draw?: (alpha: number) => void;
+    onFrameError?: (error: unknown, context: GameLoopFrameErrorContext) => void;
+}
+
+export interface GameLoopFrameErrorContext {
+    phase: 'update' | 'draw';
+    timestamp: number;
+    deltaTime: number;
+    alpha: number;
+    accumulator: number;
+    fixedDeltaTime: number;
+    gameTime: number;
+    frameCount: number;
+    paused: boolean;
 }
 
 export class GameLoop {
@@ -23,6 +36,7 @@ export class GameLoop {
     currentFPS: number;
     gameTime: number;
     _boundLoop: (currentTime: number) => void;
+    onFrameError: (error: unknown, context: GameLoopFrameErrorContext) => void;
 
     constructor(options: GameLoopOptions = {}) {
         this.targetFPS = options.targetFPS || 60;
@@ -45,6 +59,10 @@ export class GameLoop {
         this.gameTime = 0; // Total game time (paused time not counted)
 
         this._boundLoop = this._loop.bind(this);
+        this.onFrameError = options.onFrameError || ((error, context) => {
+            // Last-resort crash logging when no host handler is provided.
+            console.error('Unhandled GameLoop frame error', context, error);
+        });
     }
 
     /**
@@ -68,10 +86,7 @@ export class GameLoop {
      */
     stop() {
         this.running = false;
-        if (this.rafId) {
-            cancelAnimationFrame(this.rafId);
-            this.rafId = null;
-        }
+        this._cancelScheduledFrame();
     }
 
     /**
@@ -164,12 +179,18 @@ export class GameLoop {
         }
 
         // Fixed timestep update
+        let frameError: { error: unknown; phase: 'update' | 'draw' } | null = null;
         if (!this.paused) {
             this.accumulator += deltaTime;
 
             // Run fixed updates
             while (this.accumulator >= this.fixedDeltaTime) {
-                this.updateCallback(this.fixedDeltaTime);
+                try {
+                    this.updateCallback(this.fixedDeltaTime);
+                } catch (error) {
+                    frameError = { error, phase: 'update' };
+                    break;
+                }
                 this.gameTime += this.fixedDeltaTime;
                 this.accumulator -= this.fixedDeltaTime;
             }
@@ -178,9 +199,45 @@ export class GameLoop {
         // Render (always, even when paused)
         // Pass interpolation alpha for smooth rendering
         const alpha = this.accumulator / this.fixedDeltaTime;
-        this.drawCallback(alpha);
+        if (!frameError) {
+            try {
+                this.drawCallback(alpha);
+            } catch (error) {
+                frameError = { error, phase: 'draw' };
+            }
+        }
+
+        if (frameError) {
+            this.running = false;
+            this.paused = true;
+            this._cancelScheduledFrame();
+
+            try {
+                this.onFrameError(frameError.error, {
+                    phase: frameError.phase,
+                    timestamp: currentTime,
+                    deltaTime,
+                    alpha,
+                    accumulator: this.accumulator,
+                    fixedDeltaTime: this.fixedDeltaTime,
+                    gameTime: this.gameTime,
+                    frameCount: this.frameCount,
+                    paused: this.paused
+                });
+            } catch (handlerError) {
+                console.error('Error in GameLoop onFrameError handler', handlerError);
+            }
+            return;
+        }
 
         // Schedule next frame
         this.rafId = requestAnimationFrame(this._boundLoop);
+    }
+
+    _cancelScheduledFrame() {
+        if (this.rafId !== null) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
     }
 }

@@ -28,6 +28,10 @@ export class InputManager {
     keysPressed: Map<string, boolean>;
     keysReleased: Map<string, boolean>;
     previousKeys: Map<string, boolean>;
+    virtualActions: Map<string, boolean>;
+    virtualActionsPressed: Map<string, boolean>;
+    virtualActionsReleased: Map<string, boolean>;
+    previousVirtualActions: Map<string, boolean>;
     mouse: MouseState;
     bindings: Map<string, string[]>;
     _handlers: InputHandlers;
@@ -40,6 +44,10 @@ export class InputManager {
         this.keysPressed = new Map();    // Just pressed this frame
         this.keysReleased = new Map();   // Just released this frame
         this.previousKeys = new Map();   // Previous frame
+        this.virtualActions = new Map();
+        this.virtualActionsPressed = new Map();
+        this.virtualActionsReleased = new Map();
+        this.previousVirtualActions = new Map();
 
         // Mouse state
         this.mouse = {
@@ -219,6 +227,8 @@ export class InputManager {
         // Calculate pressed/released states
         this.keysPressed.clear();
         this.keysReleased.clear();
+        this.virtualActionsPressed.clear();
+        this.virtualActionsReleased.clear();
         this.mouse.buttonsPressed.clear();
         this.mouse.buttonsReleased.clear();
 
@@ -232,8 +242,23 @@ export class InputManager {
             }
         }
 
+        for (const action of new Set([
+            ...this.virtualActions.keys(),
+            ...this.previousVirtualActions.keys()
+        ])) {
+            const isDown = this.virtualActions.get(action) || false;
+            const wasDown = this.previousVirtualActions.get(action) || false;
+
+            if (isDown && !wasDown) {
+                this.virtualActionsPressed.set(action, true);
+            } else if (!isDown && wasDown) {
+                this.virtualActionsReleased.set(action, true);
+            }
+        }
+
         // Copy current state to previous
         this.previousKeys = new Map(this.keys);
+        this.previousVirtualActions = new Map(this.virtualActions);
     }
 
     /**
@@ -242,6 +267,8 @@ export class InputManager {
      * @returns {boolean}
      */
     isAction(action: string) {
+        if (this.virtualActions.get(action)) return true;
+
         const keys = this.bindings.get(action);
         if (!keys) return false;
 
@@ -254,6 +281,8 @@ export class InputManager {
      * @returns {boolean}
      */
     isActionPressed(action: string) {
+        if (this.virtualActionsPressed.get(action)) return true;
+
         const keys = this.bindings.get(action);
         if (!keys) return false;
 
@@ -266,10 +295,28 @@ export class InputManager {
      * @returns {boolean}
      */
     isActionReleased(action: string) {
+        if (this.virtualActionsReleased.get(action)) return true;
+
         const keys = this.bindings.get(action);
         if (!keys) return false;
 
         return keys.some(key => this.keysReleased.get(key));
+    }
+
+    setVirtualAction(action: string, active: boolean) {
+        if (active) {
+            this.virtualActions.set(action, true);
+            return;
+        }
+
+        this.virtualActions.delete(action);
+    }
+
+    clearVirtualActions() {
+        this.virtualActions.clear();
+        this.virtualActionsPressed.clear();
+        this.virtualActionsReleased.clear();
+        this.previousVirtualActions.clear();
     }
 
     /**
@@ -340,6 +387,7 @@ export class InputManager {
      * Cleanup event listeners
      */
     destroy() {
+        this.clearVirtualActions();
         window.removeEventListener('keydown', this._handlers.keydown);
         window.removeEventListener('keyup', this._handlers.keyup);
         window.removeEventListener('mousemove', this._handlers.mousemove);

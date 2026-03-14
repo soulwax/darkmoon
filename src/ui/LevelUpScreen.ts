@@ -60,6 +60,11 @@ export class LevelUpScreen {
     hide() {
         this.visible = false;
 
+        if (this._keyHandler) {
+            document.removeEventListener('keydown', this._keyHandler);
+            this._keyHandler = null;
+        }
+
         if (this.container) {
             this.container.classList.add('hidden');
             this.container.style.display = 'none';
@@ -107,11 +112,6 @@ export class LevelUpScreen {
 
         const option = this.options[index];
 
-        // Remove keyboard listener
-        if (this._keyHandler) {
-            document.removeEventListener('keydown', this._keyHandler);
-            this._keyHandler = null;
-        }
 
         // Hide screen
         this.hide();
@@ -120,6 +120,19 @@ export class LevelUpScreen {
         if (this.onSelect) {
             this.onSelect(option);
         }
+    }
+
+    getOptions<T extends UpgradeOptionBase = UpgradeOptionBase>() {
+        return this.options as T[];
+    }
+
+    selectOption(index: number) {
+        if (index < 0 || index >= this.options.length) {
+            return false;
+        }
+
+        this._selectOption(index);
+        return true;
     }
 
     /**

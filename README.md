@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`. Add `?autostart=1` to skip the start screen.
+Open `http://localhost:5173`. Add `?autostart=1` to skip the start screen or `?playtest=smoke` to launch the built-in self-play runner.
 
 ## How to Play
 
@@ -173,6 +173,15 @@ npm run build      # Production build to dist/
 npm run preview    # Preview production build
 npm run typecheck  # TypeScript type checking
 ```
+
+### Self-Play Playtesting
+
+- Launch a built-in browser playtest with `?playtest=smoke` or `?playtest=endurance`.
+- Override the run length with `?playtest=smoke&playtestDuration=90`.
+- Inspect the live app in DevTools with `window.Darkmoon`.
+- Start a run manually from the console with `window.Darkmoon.playtest.run()`.
+- Capture the current bot-readable snapshot with `window.Darkmoon.playtest.captureSnapshot()`.
+- Read the last structured result with `window.Darkmoon.playtest.getLastReport()`.
 
 ### Asset Paths
 
