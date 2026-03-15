@@ -64,7 +64,7 @@ export interface PlaytestGameOverSnapshot {
 }
 
 export interface PlaytestSceneSnapshot {
-    phase: 'playing' | 'gameover';
+    phase: 'starting' | 'playing' | 'levelup' | 'dying' | 'gameover';
     time: number;
     killCount: number;
     damageDealt: number;
