@@ -10,6 +10,10 @@ import { MathUtils, type Direction } from '../core/Math';
 import type { GameConfig } from '../config/GameConfig';
 import type { Camera } from '../graphics/Camera';
 import type { SpriteSheet } from '../assets/SpriteSheet';
+import { AttackTimeline } from '../combat/AttackTimeline';
+import type { AttackDefinition, CombatSource, DamagePayload } from '../combat/CombatTypes';
+import { CombatStateComponent } from '../ecs/components/CombatStateComponent';
+import { DamageResolver } from '../combat/DamageResolver';
 
 // Enemy type definitions with sprite info
 export interface EnemyTypeDefinition {
@@ -30,6 +34,13 @@ export interface EnemyTypeDefinition {
     spriteSheet?: string;
     spriteScale?: number;
     spriteOffsetY?: number;
+    contactWindup?: number;
+    contactRecovery?: number;
+    contactCooldown?: number;
+    contactRange?: number;
+    spawnThreat?: number;
+    spawnWeight?: number;
+    unlockWave?: number;
 }
 
 export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
@@ -50,7 +61,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 0.8,
         spriteSheet: 'skeleton',
         spriteScale: 1.05,
-        spriteOffsetY: 2
+        spriteOffsetY: 2,
+        contactWindup: 0.3,
+        contactRecovery: 0.24,
+        contactCooldown: 0.45,
+        contactRange: 30,
+        spawnThreat: 6,
+        spawnWeight: 28,
+        unlockWave: 0
     },
     slime: {
         name: 'Slime',
@@ -69,7 +87,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 0.5,
         spriteSheet: 'slime',
         spriteScale: 1.1,
-        spriteOffsetY: 1
+        spriteOffsetY: 1,
+        contactWindup: 0.38,
+        contactRecovery: 0.28,
+        contactCooldown: 0.48,
+        contactRange: 26,
+        spawnThreat: 4,
+        spawnWeight: 40,
+        unlockWave: 0
     },
     basic: {
         name: 'Basic',
@@ -88,7 +113,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 1.0,
         spriteSheet: 'basic',
         spriteScale: 1.0,
-        spriteOffsetY: 2
+        spriteOffsetY: 2,
+        contactWindup: 0.26,
+        contactRecovery: 0.22,
+        contactCooldown: 0.38,
+        contactRange: 28,
+        spawnThreat: 5,
+        spawnWeight: 24,
+        unlockWave: 2
     },
     fast: {
         name: 'Fast',
@@ -107,7 +139,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 1.2,
         spriteSheet: 'fast',
         spriteScale: 0.95,
-        spriteOffsetY: 1
+        spriteOffsetY: 1,
+        contactWindup: 0.18,
+        contactRecovery: 0.18,
+        contactCooldown: 0.32,
+        contactRange: 26,
+        spawnThreat: 5,
+        spawnWeight: 18,
+        unlockWave: 2
     },
     tank: {
         name: 'Tank',
@@ -126,7 +165,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 0.4,
         spriteSheet: 'tank',
         spriteScale: 1.18,
-        spriteOffsetY: 2
+        spriteOffsetY: 2,
+        contactWindup: 0.42,
+        contactRecovery: 0.32,
+        contactCooldown: 0.55,
+        contactRange: 34,
+        spawnThreat: 10,
+        spawnWeight: 9,
+        unlockWave: 4
     },
     elite: {
         name: 'Elite',
@@ -145,7 +191,14 @@ export const EnemyTypes: Record<string, EnemyTypeDefinition> = {
         knockbackResist: 0.6,
         spriteSheet: 'elite',
         spriteScale: 1.12,
-        spriteOffsetY: 2
+        spriteOffsetY: 2,
+        contactWindup: 0.24,
+        contactRecovery: 0.2,
+        contactCooldown: 0.32,
+        contactRange: 32,
+        spawnThreat: 14,
+        spawnWeight: 5,
+        unlockWave: 6
     }
 };
 
@@ -179,6 +232,12 @@ export class Enemy extends Entity {
     hitFlashTimer: number;
     damageBlinkTimer: number;
     squashTimer: number;
+    damageResolver: DamageResolver | null;
+    attackTimeline: AttackTimeline<Entity>;
+    contactAttack: AttackDefinition;
+    contactHitApplied: boolean;
+    contactRange: number;
+    deathHandled: boolean;
 
     constructor(
         x: number,
@@ -237,6 +296,21 @@ export class Enemy extends Entity {
         this.scaleX = 1;
         this.scaleY = 1;
         this.squashTimer = 0;
+        this.damageResolver = null;
+        this.attackTimeline = new AttackTimeline<Entity>();
+        this.contactAttack = {
+            key: `${this.type}-contact`,
+            timing: {
+                windup: typeDef.contactWindup || 0.28,
+                active: 0.06,
+                recovery: typeDef.contactRecovery || 0.24,
+                cooldown: typeDef.contactCooldown || 0.38
+            },
+            damageType: 'contact'
+        };
+        this.contactHitApplied = false;
+        this.contactRange = typeDef.contactRange || this.size + 16;
+        this.deathHandled = false;
 
         // Setup components
         this._setupComponents(typeDef, config);
@@ -279,6 +353,10 @@ export class Enemy extends Entity {
             layer: config.collisionLayers?.enemies || 4
         });
         this.addComponent(collider);
+
+        const combat = new CombatStateComponent('enemy', this.type);
+        combat.setState('idle');
+        this.addComponent(combat);
     }
 
     /**
@@ -287,6 +365,14 @@ export class Enemy extends Entity {
      */
     setTarget(target: Entity) {
         this.target = target;
+    }
+
+    setDamageResolver(resolver: DamageResolver | null) {
+        this.damageResolver = resolver;
+    }
+
+    getCombatState() {
+        return this.getComponent<CombatStateComponent>('CombatStateComponent');
     }
 
     /**
@@ -322,19 +408,26 @@ export class Enemy extends Entity {
      * @param {number} amount
      * @param {Entity} source
      */
-    takeDamage(amount: number, source: Entity | null = null) {
-        const health = this.getComponent<HealthComponent>('HealthComponent');
-        if (health) {
-            health.takeDamage(amount, source);
+    takeDamage(amount: number | DamagePayload, source: Entity | null = null) {
+        if (this.damageResolver) {
+            const payload = this._normalizeIncomingDamage(amount, source);
+            return this.damageResolver.applyToEnemy(this, payload);
         }
 
-        // Apply knockback from source (if not already being knocked back significantly)
+        const health = this.getComponent<HealthComponent>('HealthComponent');
+        const rawAmount = typeof amount === 'number' ? amount : amount.amount;
+        if (health) {
+            health.takeDamage(rawAmount, source);
+        }
+
         if (source && Math.abs(this.knockbackVx) < 50 && Math.abs(this.knockbackVy) < 50) {
             const dx = this.x - source.x;
             const dy = this.y - source.y;
             const dist = Math.sqrt(dx * dx + dy * dy) || 1;
             this.applyKnockback(dx / dist * 150, dy / dist * 150);
         }
+
+        return null;
     }
 
     /**
@@ -344,17 +437,19 @@ export class Enemy extends Entity {
         this.hitFlash = true;
         this.hitFlashTimer = 0.1;
         this.damageBlinkTimer = 0.16;
-
-        eventBus.emit(GameEvents.ENEMY_DAMAGED, {
-            enemy: this,
-            amount: amount
-        });
     }
 
     /**
      * Handle death
      */
     _onDeath() {
+        this.handleResolvedDeath();
+    }
+
+    handleResolvedDeath() {
+        if (this.deathHandled) return;
+        this.deathHandled = true;
+        this.getCombatState()?.setState('dead');
         eventBus.emit(GameEvents.ENEMY_KILLED, {
             enemy: this,
             type: this.type,
@@ -365,6 +460,47 @@ export class Enemy extends Entity {
         });
 
         this.destroy();
+    }
+
+    _normalizeIncomingDamage(amount: number | DamagePayload, source: Entity | null) {
+        if (typeof amount !== 'number') {
+            return amount;
+        }
+
+        return {
+            id: `enemy-hit:${this.id}:${Math.random().toString(36).slice(2, 8)}`,
+            source: this._toCombatSource(source),
+            amount,
+            baseAmount: amount,
+            damageType: 'physical',
+            invulnerabilityDuration: 0.05,
+            staggerDuration: 0.08,
+            knockback: source
+                ? (() => {
+                    const dx = this.x - source.x;
+                    const dy = this.y - source.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                    return {
+                        x: dx / dist,
+                        y: dy / dist,
+                        force: 150
+                    };
+                })()
+                : null
+        } satisfies DamagePayload;
+    }
+
+    _toCombatSource(source: Entity | null): CombatSource | null {
+        if (!source) return null;
+
+        return {
+            id: source.id,
+            type: (source as { type?: string }).type || source.constructor.name || 'entity',
+            faction: source.hasTag?.('player') ? 'player' : source.hasTag?.('enemy') ? 'enemy' : 'neutral',
+            entity: source,
+            x: source.x,
+            y: source.y
+        };
     }
 
     /**
@@ -385,6 +521,83 @@ export class Enemy extends Entity {
         const dy = other.y - this.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
         return dist < this.size + 16;
+    }
+
+    canStartContactAttack(distanceToTarget: number) {
+        const combat = this.getCombatState();
+        return (
+            !!combat &&
+            combat.canAttack() &&
+            this.attackTimeline.canStart() &&
+            this.knockbackStunTime <= 0 &&
+            distanceToTarget <= this.contactRange
+        );
+    }
+
+    startContactAttack() {
+        this.contactHitApplied = false;
+        this.attackTimeline.start(this.contactAttack, this.target, {
+            onStart: () => {
+                this.getCombatState()?.setState('windup', this.contactAttack.timing.windup);
+            },
+            onPhaseChange: (change) => {
+                if (change.phase === 'active') {
+                    this.getCombatState()?.setState('active', this.contactAttack.timing.active);
+                } else if (change.phase === 'recovery' || change.phase === 'cooldown') {
+                    this.getCombatState()?.setState('recovery', change.phase === 'recovery'
+                        ? this.contactAttack.timing.recovery
+                        : this.contactAttack.timing.cooldown);
+                }
+            },
+            onActiveTick: () => {
+                if (this.contactHitApplied) return;
+                if (!this.target || this.target.destroyed) return;
+
+                const dx = this.target.x - this.x;
+                const dy = this.target.y - this.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                if (distance > this.contactRange + 8) return;
+
+                const target = this.target as Entity & {
+                    receiveHit?: (amount: DamagePayload) => unknown;
+                };
+
+                const dirX = distance > 0 ? dx / distance : 0;
+                const dirY = distance > 0 ? dy / distance : 0;
+                target.receiveHit?.({
+                    id: `${this.type}-contact:${this.id}:${this.attackTimeline.attackId}`,
+                    source: this._toCombatSource(this),
+                    amount: this.damage,
+                    baseAmount: this.damage,
+                    damageType: 'contact',
+                    invulnerabilityDuration: 0.4,
+                    staggerDuration: 0.14,
+                    knockback: {
+                        x: dirX,
+                        y: dirY,
+                        force: 120
+                    }
+                });
+                this.contactHitApplied = true;
+            },
+            onComplete: () => {
+                this.contactHitApplied = false;
+                if (!this.destroyed && !this.getCombatState()?.isDead()) {
+                    this.getCombatState()?.setState('idle');
+                }
+            },
+            onCancel: () => {
+                this.contactHitApplied = false;
+            }
+        });
+    }
+
+    _updateFacing(dx: number, dy: number) {
+        if (Math.abs(dx) > Math.abs(dy)) {
+            this.facingDirection = dx > 0 ? 'right' : 'left';
+        } else {
+            this.facingDirection = dy > 0 ? 'down' : 'up';
+        }
     }
 
     update(deltaTime: number) {
@@ -434,36 +647,49 @@ export class Enemy extends Entity {
         }
 
         const movement = this.getComponent<MovementComponent>('MovementComponent');
+        const combat = this.getCombatState();
+        this.attackTimeline.update(deltaTime);
 
-        // Chase target (only if not stunned)
-        if (this.target && !this.target.destroyed && this.knockbackStunTime <= 0) {
-            if (movement) {
-                const dx = this.target.x - this.x;
-                const dy = this.target.y - this.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
+        if (movement) {
+            movement.setInput(0, 0);
+        }
 
-                if (dist > 0) {
+        if (this.target && !this.target.destroyed) {
+            const dx = this.target.x - this.x;
+            const dy = this.target.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy) || 0;
+            if (dist > 0) {
+                this._updateFacing(dx, dy);
+            }
+
+            let attackBusy = this.attackTimeline.isBusy();
+            if (this.canStartContactAttack(dist)) {
+                this.startContactAttack();
+                attackBusy = true;
+            }
+
+            if (!attackBusy && this.knockbackStunTime <= 0 && combat?.canMove() && movement) {
+                if (dist > this.contactRange * 0.9) {
                     movement.setInput(dx / dist, dy / dist);
-
-                    // Update facing direction
-                    if (Math.abs(dx) > Math.abs(dy)) {
-                        this.facingDirection = dx > 0 ? 'right' : 'left';
-                    } else {
-                        this.facingDirection = dy > 0 ? 'down' : 'up';
-                    }
                 }
             }
-        } else if (this.knockbackStunTime > 0) {
-            // Stop movement input during stun
-            if (movement) {
-                movement.setInput(0, 0);
-            }
+        }
+
+        if (this.knockbackStunTime > 0 || combat?.state === 'hurt' || combat?.state === 'staggered') {
+            movement?.setInput(0, 0);
         }
 
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
         if (animator) {
             const moving = movement?.isMoving() || false;
-            animator.setState(moving ? 'run' : 'idle', this.facingDirection);
+            const state = this.attackTimeline.phase === 'windup' || this.attackTimeline.phase === 'active'
+                ? 'attack'
+                : combat?.state === 'hurt'
+                    ? 'hurt'
+                    : moving
+                        ? 'run'
+                        : 'idle';
+            animator.setState(state, this.facingDirection);
             animator.setSpeed(Math.max(0.6, this.animSpeed / 10));
         } else {
             // Legacy frame animation fallback (image-sheet without YAML).
@@ -472,6 +698,17 @@ export class Enemy extends Entity {
                 this.animTimer -= 1;
                 this.currentFrame = (this.currentFrame + 1) % this.animFrames;
             }
+        }
+
+        if (
+            combat &&
+            combat.state !== 'hurt' &&
+            combat.state !== 'staggered' &&
+            combat.state !== 'dying' &&
+            combat.state !== 'dead' &&
+            this.attackTimeline.phase === 'idle'
+        ) {
+            combat.setState(movement?.isMoving() ? 'moving' : 'idle');
         }
 
         super.update(deltaTime);
@@ -484,6 +721,7 @@ export class Enemy extends Entity {
         }
 
         this._drawShadow(ctx);
+        this._drawAttackTelegraph(ctx);
 
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
         if (animator && this.spriteSheet) {
@@ -499,6 +737,20 @@ export class Enemy extends Entity {
         if (health && !health.isFullHealth()) {
             this._drawHealthBar(ctx, health);
         }
+    }
+
+    _drawAttackTelegraph(ctx: CanvasRenderingContext2D) {
+        if (this.attackTimeline.phase !== 'windup') return;
+
+        const progress = this.attackTimeline.getPhaseProgress();
+        const radius = this.contactRange + 4 + progress * 6;
+        ctx.save();
+        ctx.strokeStyle = `rgba(255, 90, 90, ${0.25 + progress * 0.45})`;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
     }
 
     _drawShadow(ctx: CanvasRenderingContext2D) {
@@ -535,8 +787,8 @@ export class Enemy extends Entity {
                 scaleX: this.spriteScale * this.scaleX,
                 scaleY: this.spriteScale * this.scaleY,
                 alpha: 1,
-                tint: this.hitFlash ? '#ffffff' : null,
-                tintAlpha: this.hitFlash ? 0.55 : 0
+                tint: this.hitFlash ? '#ffffff' : this.attackTimeline.phase === 'windup' ? '#ff8080' : null,
+                tintAlpha: this.hitFlash ? 0.55 : this.attackTimeline.phase === 'windup' ? 0.22 : 0
             }
         );
     }

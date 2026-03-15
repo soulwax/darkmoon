@@ -320,6 +320,24 @@ export class InputManager {
     }
 
     /**
+     * Reset all input state — call at the start of each new game session
+     * to prevent stale key state from a previous (dead) session bleeding through.
+     */
+    reset() {
+        this.keys.clear();
+        this.previousKeys.clear();
+        this.keysPressed.clear();
+        this.keysReleased.clear();
+        this.virtualActions.clear();
+        this.virtualActionsPressed.clear();
+        this.virtualActionsReleased.clear();
+        this.previousVirtualActions.clear();
+        this.mouse.buttons.clear();
+        this.mouse.buttonsPressed.clear();
+        this.mouse.buttonsReleased.clear();
+    }
+
+    /**
      * Get movement vector from input
      * @returns {Vector2}
      */

@@ -406,34 +406,6 @@ export class Application {
             });
         });
 
-        // Safety fallback: if a death event occurs without a game-over event, force one.
-        eventBus.on(GameEvents.PLAYER_DIED, () => {
-            queueMicrotask(() => {
-                if (!this.isGameOverVisible()) {
-                    eventBus.emit(GameEvents.GAME_OVER, {
-                        message: 'You were overwhelmed. Start again?',
-                        debug: {
-                            reason: 'player_died_without_visible_game_over'
-                        }
-                    });
-                }
-            });
-
-            // Give DOM/layout one more chance before forcing a fallback game-over payload.
-            window.setTimeout(() => {
-                if (!this.isGameOverVisible()) {
-                    const fallback = this.lastGameOverData || {
-                        message: 'You were overwhelmed. Start again?',
-                        debug: {
-                            reason: 'player_died_fallback_timeout'
-                        }
-                    };
-                    this.showGameOver(fallback);
-                    this.ensureGameOverVisible(fallback);
-                }
-            }, 140);
-        });
-
         // Allow keyboard restart directly from death screen.
         window.addEventListener('keydown', (e) => {
             if (!this.isGameOverVisible()) return;

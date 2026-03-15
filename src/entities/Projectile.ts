@@ -4,6 +4,7 @@ import { Entity } from '../ecs/Entity';
 import { ColliderComponent } from '../ecs/components/ColliderComponent';
 import { MathUtils } from '../core/Math';
 import type { GameConfig } from '../config/GameConfig';
+import type { DamagePayload } from '../combat/CombatTypes';
 
 interface ProjectileOptions {
     damage?: number;
@@ -20,6 +21,7 @@ interface ProjectileOptions {
     homingStrength?: number;
     target?: Entity | null;
     config?: GameConfig;
+    damagePayload?: DamagePayload | null;
 }
 
 export class Projectile extends Entity {
@@ -40,6 +42,7 @@ export class Projectile extends Entity {
     homing: boolean;
     homingStrength: number;
     target: Entity | null;
+    damagePayload: DamagePayload | null;
 
     constructor(x: number, y: number, options: ProjectileOptions = {}) {
         super(x, y);
@@ -85,6 +88,7 @@ export class Projectile extends Entity {
         this.homing = options.homing || false;
         this.homingStrength = options.homingStrength || 5;
         this.target = options.target || null;
+        this.damagePayload = options.damagePayload || null;
 
         // Setup collider
         this._setupCollider(options.config);

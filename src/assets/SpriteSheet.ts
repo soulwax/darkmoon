@@ -17,6 +17,8 @@ export interface DrawOptions {
 
 export interface SpriteSheetMeta {
     tile_size?: number;
+    sprite_width?: number;
+    sprite_height?: number;
     frame_rate?: number;
     loop?: boolean;
     file?: string | string[];
@@ -43,8 +45,10 @@ export interface SpriteSheetTile {
     width?: number;
     height?: number;
     frame_list?: SpriteSheetFrame[];
+    sprite_count?: number;
     frame_rate?: number;
     loop?: boolean;
+    flippable?: boolean;
 }
 
 export interface SpriteSheetData {
@@ -78,9 +82,12 @@ export class SpriteSheet {
     images: HTMLImageElement[];
     image: HTMLImageElement;
     tileSize: number;
+    defaultFrameWidth: number;
+    defaultFrameHeight: number;
     defaultFrameRate: number;
     defaultLoop: boolean;
     animations: Map<string, AnimationData>;
+    animationBindings: Map<string, { name: string; flipX: boolean }>;
     tiles: Map<number | string, TileData>;
 
     constructor(name: string, image: HTMLImageElement, yamlData: SpriteSheetData, images: HTMLImageElement[] | null = null) {
@@ -92,12 +99,15 @@ export class SpriteSheet {
         this.image = this.images[0];
 
         // Parse metadata
-        this.tileSize = yamlData.meta?.tile_size || 16;
+        this.defaultFrameWidth = yamlData.meta?.sprite_width || yamlData.meta?.tile_size || 16;
+        this.defaultFrameHeight = yamlData.meta?.sprite_height || yamlData.meta?.tile_size || 16;
+        this.tileSize = yamlData.meta?.tile_size || Math.max(this.defaultFrameWidth, this.defaultFrameHeight);
         this.defaultFrameRate = yamlData.meta?.frame_rate || 10;
         this.defaultLoop = yamlData.meta?.loop !== false;
 
         // Build animation/tile lookup maps
         this.animations = new Map();
+        this.animationBindings = new Map();
         this.tiles = new Map();
 
         this._parseData();
@@ -109,37 +119,206 @@ export class SpriteSheet {
         for (const tile of tiles) {
             const id = tile.id;
             const direction = tile.direction || tile.type || tile.name || `tile_${id}`;
+            const frames = this._resolveFrames(tile);
 
             // Store by both ID and direction name
             this.tiles.set(id, tile);
 
             // Parse animation data
-            if (tile.frame_list && tile.frame_list.length > 0) {
+            if (frames.length > 0) {
                 const animation: AnimationData = {
                     id: id,
                     name: direction,
-                    frames: tile.frame_list.map(frame => ({
-                        x: frame.x,
-                        y: frame.y,
-                        width: frame.width || this.tileSize,
-                        height: frame.height || this.tileSize
-                    })),
+                    frames,
                     frameRate: tile.frame_rate || this.defaultFrameRate,
                     loop: tile.loop !== undefined ? tile.loop : this.defaultLoop,
-                    frameCount: tile.frame_list.length
+                    frameCount: frames.length
                 };
                 this.animations.set(direction, animation);
+                this._registerAnimationBindings(direction, tile);
             } else {
                 // Single frame tile
                 const frame: AnimationFrame = {
-                    x: tile.atlas_x || tile.start_x || 0,
-                    y: tile.atlas_y || tile.start_y || 0,
-                    width: tile.width || this.tileSize,
-                    height: tile.height || this.tileSize
+                    x: tile.atlas_x ?? tile.start_x ?? 0,
+                    y: tile.atlas_y ?? tile.start_y ?? 0,
+                    width: tile.width || this.defaultFrameWidth,
+                    height: tile.height || this.defaultFrameHeight
                 };
                 this.tiles.set(direction, { ...tile, frame });
             }
         }
+    }
+
+    _resolveFrames(tile: SpriteSheetTile): AnimationFrame[] {
+        const spriteCount = Number.isFinite(tile.sprite_count)
+            ? Math.max(0, Math.floor(tile.sprite_count as number))
+            : 0;
+
+        const explicitFrames = Array.isArray(tile.frame_list)
+            ? tile.frame_list.map((frame) => ({
+                x: frame.x,
+                y: frame.y,
+                width: frame.width || tile.width || this.defaultFrameWidth,
+                height: frame.height || tile.height || this.defaultFrameHeight
+            }))
+            : [];
+
+        if (spriteCount > 0 && explicitFrames.length >= spriteCount) {
+            return explicitFrames.slice(0, spriteCount);
+        }
+
+        if (spriteCount > 1 && explicitFrames.length === 1) {
+            const [firstFrame] = explicitFrames;
+            return Array.from({ length: spriteCount }, (_, index) => ({
+                x: firstFrame.x + index * firstFrame.width,
+                y: firstFrame.y,
+                width: firstFrame.width,
+                height: firstFrame.height
+            }));
+        }
+
+        if (explicitFrames.length > 0) {
+            return explicitFrames;
+        }
+
+        if (spriteCount <= 0) {
+            return [];
+        }
+
+        const startX = tile.atlas_x ?? tile.start_x ?? 0;
+        const startY = tile.atlas_y ?? tile.start_y ?? 0;
+        const frameWidth = tile.width || this.defaultFrameWidth;
+        const frameHeight = tile.height || this.defaultFrameHeight;
+
+        return Array.from({ length: spriteCount }, (_, index) => ({
+            x: startX + index * frameWidth,
+            y: startY,
+            width: frameWidth,
+            height: frameHeight
+        }));
+    }
+
+    _registerAnimationBindings(animationName: string, tile: SpriteSheetTile) {
+        this._bindAnimation(animationName, animationName, false);
+
+        const semantics = this._parseAnimationSemantics(animationName);
+        if (!semantics) {
+            return;
+        }
+
+        const { action, direction } = semantics;
+        const bindDirectionalAliases = (targetDirection: string, flipX: boolean) => {
+            for (const actionAlias of this._getActionAliases(action)) {
+                this._bindAnimation(`${targetDirection}_${actionAlias}`, animationName, flipX);
+                this._bindAnimation(`${actionAlias}_${targetDirection}`, animationName, flipX);
+            }
+        };
+
+        if (direction === 'none') {
+            for (const actionAlias of this._getActionAliases(action)) {
+                this._bindAnimation(actionAlias, animationName, false);
+            }
+            return;
+        }
+
+        if (direction === 'sideways') {
+            bindDirectionalAliases('sideways', false);
+
+            if (tile.flippable) {
+                // Sideways rows are treated as right-facing source art by convention.
+                bindDirectionalAliases('right', false);
+                bindDirectionalAliases('left', true);
+            }
+            return;
+        }
+
+        bindDirectionalAliases(direction, false);
+    }
+
+    _bindAnimation(alias: string, animationName: string, flipX: boolean) {
+        const key = alias.trim().toLowerCase();
+        if (!key || this.animationBindings.has(key)) {
+            return;
+        }
+
+        this.animationBindings.set(key, { name: animationName, flipX });
+    }
+
+    _parseAnimationSemantics(animationName: string) {
+        const tokens = animationName.trim().toLowerCase().split('_').filter(Boolean);
+        if (tokens.length === 0) {
+            return null;
+        }
+
+        if (tokens.length === 1) {
+            const action = this._normalizeActionToken(tokens[0]);
+            return action === 'death' ? { action, direction: 'none' as const } : null;
+        }
+
+        const firstAction = this._normalizeActionToken(tokens[0]);
+        const lastAction = this._normalizeActionToken(tokens[tokens.length - 1]);
+        const firstDirection = this._normalizeDirectionToken(tokens[0]);
+        const lastDirection = this._normalizeDirectionToken(tokens[tokens.length - 1]);
+
+        if (firstAction && lastDirection) {
+            return { action: firstAction, direction: lastDirection };
+        }
+
+        if (firstDirection && lastAction) {
+            return { action: lastAction, direction: firstDirection };
+        }
+
+        return null;
+    }
+
+    _normalizeActionToken(token: string) {
+        switch (token) {
+            case 'idle':
+                return 'idle' as const;
+            case 'run':
+            case 'running':
+            case 'walk':
+            case 'move':
+                return 'running' as const;
+            case 'attack':
+                return 'attack' as const;
+            case 'hurt':
+                return 'hurt' as const;
+            case 'death':
+            case 'dead':
+            case 'die':
+                return 'death' as const;
+            default:
+                return null;
+        }
+    }
+
+    _normalizeDirectionToken(token: string) {
+        switch (token) {
+            case 'up':
+            case 'down':
+            case 'left':
+            case 'right':
+            case 'sideways':
+                return token;
+            default:
+                return null;
+        }
+    }
+
+    _getActionAliases(action: 'idle' | 'running' | 'attack' | 'hurt' | 'death') {
+        switch (action) {
+            case 'running':
+                return ['running', 'move', 'walk', 'run'];
+            case 'death':
+                return ['death', 'dead', 'die'];
+            default:
+                return [action];
+        }
+    }
+
+    getAnimationBinding(name: string) {
+        return this.animationBindings.get(name.trim().toLowerCase()) || null;
     }
 
     /**
@@ -148,7 +327,12 @@ export class SpriteSheet {
      * @returns {Object|null}
      */
     getAnimation(name: string) {
-        return this.animations.get(name) || null;
+        const binding = this.getAnimationBinding(name);
+        if (!binding) {
+            return null;
+        }
+
+        return this.animations.get(binding.name) || null;
     }
 
     /**
@@ -166,7 +350,7 @@ export class SpriteSheet {
      * @returns {boolean}
      */
     hasAnimation(name: string) {
-        return this.animations.has(name);
+        return this.getAnimationBinding(name) !== null;
     }
 
     /**
@@ -211,7 +395,7 @@ export class SpriteSheet {
      * @param {Object} [options] - Drawing options
      */
     drawFrame(ctx: CanvasRenderingContext2D, animationName: string, frameIndex: number, x: number, y: number, options?: DrawOptions) {
-        const animation = this.animations.get(animationName);
+        const animation = this.getAnimation(animationName);
         if (!animation) {
             console.warn(`Animation not found: ${animationName}`);
             return;
@@ -237,17 +421,17 @@ export class SpriteSheet {
         }
 
         const rawFrame = tile.frame || tile.frame_list?.[0] || {
-            x: tile.atlas_x || 0,
-            y: tile.atlas_y || 0,
-            width: tile.width || this.tileSize,
-            height: tile.height || this.tileSize
+            x: tile.atlas_x ?? tile.start_x ?? 0,
+            y: tile.atlas_y ?? tile.start_y ?? 0,
+            width: tile.width || this.defaultFrameWidth,
+            height: tile.height || this.defaultFrameHeight
         };
 
         const frame: AnimationFrame = {
             x: rawFrame.x,
             y: rawFrame.y,
-            width: rawFrame.width ?? this.tileSize,
-            height: rawFrame.height ?? this.tileSize
+            width: rawFrame.width ?? this.defaultFrameWidth,
+            height: rawFrame.height ?? this.defaultFrameHeight
         };
 
         this._drawFrame(ctx, frame, x, y, options || EMPTY_DRAW_OPTIONS);

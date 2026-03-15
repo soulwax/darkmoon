@@ -3,6 +3,8 @@
 import { eventBus, GameEvents } from '../core/EventBus';
 import type { Player } from '../entities/Player';
 import type { Enemy } from '../entities/Enemy';
+import { HitRegistry } from '../combat/HitRegistry';
+import type { CombatSource, DamagePayload, DamageType } from '../combat/CombatTypes';
 
 export interface WeaponOwnerStats {
     damageMultiplier?: number;
@@ -29,6 +31,7 @@ export class Weapon {
     level: number;
     maxLevel: number;
     active: boolean;
+    hitRegistry: HitRegistry;
 
     constructor(owner: WeaponOwner, options: { name?: string; damage?: number; cooldown?: number; maxLevel?: number } = {}) {
         this.owner = owner;
@@ -59,6 +62,7 @@ export class Weapon {
 
         // Active state
         this.active = true;
+        this.hitRegistry = new HitRegistry();
     }
 
     /**
@@ -145,6 +149,8 @@ export class Weapon {
             this.cooldownTimer -= deltaTime;
         }
 
+        this.hitRegistry.tick(deltaTime);
+
         // Auto-fire logic (override in subclass if needed)
         if (this.canFire()) {
             this.fire(enemies);
@@ -157,6 +163,38 @@ export class Weapon {
      */
     draw(ctx: CanvasRenderingContext2D) {
         // Override in subclass
+    }
+
+    cancel() {
+        this.hitRegistry.reset();
+        // Override in subclass when a weapon has active visuals or hit windows.
+    }
+
+    getCombatSource(): CombatSource {
+        return {
+            id: this.owner.id,
+            type: this.name,
+            faction: 'player',
+            entity: this.owner,
+            x: this.owner.x,
+            y: this.owner.y
+        };
+    }
+
+    buildDamagePayload(
+        id: string,
+        amount: number,
+        damageType: DamageType,
+        extra: Partial<Omit<DamagePayload, 'id' | 'source' | 'amount' | 'damageType'>> = {}
+    ): DamagePayload {
+        return {
+            id,
+            source: this.getCombatSource(),
+            amount,
+            baseAmount: amount,
+            damageType,
+            ...extra
+        };
     }
 
     getDamageContext(baseDamage: number, baseCritChance: number = 0.05) {

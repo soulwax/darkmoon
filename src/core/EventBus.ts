@@ -134,6 +134,10 @@ export const GameEvents = {
     ITEM_COLLECTED: 'item:collected',
     POWERUP_COLLECTED: 'powerup:collected',
 
+    // Combat / run flow events
+    DAMAGE_RESOLVED: 'combat:damage_resolved',
+    RUN_PHASE_CHANGED: 'run:phase_changed',
+
     // Game state events
     GAME_START: 'game:start',
     GAME_PAUSE: 'game:pause',

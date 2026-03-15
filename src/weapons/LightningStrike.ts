@@ -1,32 +1,36 @@
-// File: src/weapons/LightningStrike.ts
-
-import { Weapon, type WeaponUpgradeInfo } from './Weapon';
 import { MathUtils } from '../core/Math';
 import type { Enemy } from '../entities/Enemy';
+import { Weapon, type WeaponUpgradeInfo } from './Weapon';
 
 type StrikeTarget = Enemy | { x: number; y: number; isRandom: true };
+
+interface PendingStrike {
+    id: string;
+    x: number;
+    y: number;
+    radius: number;
+    telegraphTimer: number;
+    telegraphDuration: number;
+    damage: number;
+    crit: boolean;
+}
 
 class LightningBolt {
     x: number;
     y: number;
     radius: number;
-    damage: number;
     lifetime: number;
     age: number;
     dead: boolean;
     segments: Array<{ x1: number; y1: number; x2: number; y2: number }>;
 
-    constructor(x: number, y: number, radius: number, damage: number) {
+    constructor(x: number, y: number, radius: number) {
         this.x = x;
         this.y = y;
         this.radius = radius;
-        this.damage = damage;
-
         this.lifetime = 0.3;
         this.age = 0;
         this.dead = false;
-
-        // Generate lightning bolt segments
         this.segments = this._generateSegments();
     }
 
@@ -34,29 +38,20 @@ class LightningBolt {
         const segments = [];
         const branchCount = MathUtils.randomInt(3, 6);
 
-        for (let b = 0; b < branchCount; b++) {
+        for (let branch = 0; branch < branchCount; branch++) {
             const angle = MathUtils.random(0, Math.PI * 2);
             const length = this.radius * MathUtils.random(0.5, 1);
             const segmentCount = MathUtils.randomInt(3, 6);
-
             let currentX = this.x;
             let currentY = this.y;
 
-            for (let i = 0; i < segmentCount; i++) {
+            for (let index = 0; index < segmentCount; index++) {
                 const segLength = length / segmentCount;
                 const deviation = MathUtils.random(-20, 20);
                 const segAngle = angle + MathUtils.degToRad(deviation);
-
                 const nextX = currentX + Math.cos(segAngle) * segLength;
                 const nextY = currentY + Math.sin(segAngle) * segLength;
-
-                segments.push({
-                    x1: currentX,
-                    y1: currentY,
-                    x2: nextX,
-                    y2: nextY
-                });
-
+                segments.push({ x1: currentX, y1: currentY, x2: nextX, y2: nextY });
                 currentX = nextX;
                 currentY = nextY;
             }
@@ -75,39 +70,32 @@ class LightningBolt {
     draw(ctx: CanvasRenderingContext2D) {
         if (this.dead) return;
 
-        const alpha = 1 - (this.age / this.lifetime);
-
-        // Draw area fill
+        const alpha = 1 - this.age / this.lifetime;
         ctx.fillStyle = `rgba(255, 255, 0, ${alpha * 0.3})`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
         ctx.fill();
 
-        // Draw lightning bolts
         ctx.strokeStyle = `rgba(255, 255, 0, ${alpha})`;
         ctx.lineWidth = 3;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
-
-        for (const seg of this.segments) {
+        for (const segment of this.segments) {
             ctx.beginPath();
-            ctx.moveTo(seg.x1, seg.y1);
-            ctx.lineTo(seg.x2, seg.y2);
+            ctx.moveTo(segment.x1, segment.y1);
+            ctx.lineTo(segment.x2, segment.y2);
             ctx.stroke();
         }
 
-        // Draw glow
         ctx.strokeStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
         ctx.lineWidth = 1;
-
-        for (const seg of this.segments) {
+        for (const segment of this.segments) {
             ctx.beginPath();
-            ctx.moveTo(seg.x1, seg.y1);
-            ctx.lineTo(seg.x2, seg.y2);
+            ctx.moveTo(segment.x1, segment.y1);
+            ctx.lineTo(segment.x2, segment.y2);
             ctx.stroke();
         }
 
-        // Draw center flash
         ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
         ctx.beginPath();
         ctx.arc(this.x, this.y, 5, 0, Math.PI * 2);
@@ -120,26 +108,23 @@ export class LightningStrike extends Weapon {
     strikeRadius: number;
     range: number;
     strikes: LightningBolt[];
-    color: string;
+    pendingStrikes: PendingStrike[];
+    telegraphDuration: number;
 
     constructor(owner: Weapon['owner'], options: { damage?: number; cooldown?: number } = {}) {
         super(owner, {
             name: 'Lightning Strike',
             damage: 40,
-            cooldown: 2.0,
+            cooldown: 2,
             ...options
         });
 
-        // Strike properties
         this.strikeCount = 1;
         this.strikeRadius = 40;
-        this.range = 300; // Max range from player
-
-        // Active strikes
+        this.range = 300;
         this.strikes = [];
-
-        // Visual
-        this.color = '#ff0';
+        this.pendingStrikes = [];
+        this.telegraphDuration = 0.42;
     }
 
     _applyUpgrade() {
@@ -177,70 +162,53 @@ export class LightningStrike extends Weapon {
     }
 
     _doFire(enemies: Enemy[]) {
-        const validTargets = enemies.filter(e => {
-            if (e.destroyed) return false;
-            const dx = e.x - this.owner.x;
-            const dy = e.y - this.owner.y;
+        const validTargets = enemies.filter((enemy) => {
+            if (enemy.destroyed) return false;
+            const dx = enemy.x - this.owner.x;
+            const dy = enemy.y - this.owner.y;
             return dx * dx + dy * dy < this.range * this.range;
         });
 
-        // Pick random targets
         const shuffled = [...validTargets].sort(() => Math.random() - 0.5);
         const targets: StrikeTarget[] = shuffled.slice(0, this.strikeCount);
 
-        // If not enough targets, strike random positions
         while (targets.length < this.strikeCount) {
             const angle = MathUtils.random(0, Math.PI * 2);
-            const dist = MathUtils.random(50, this.range);
+            const distance = MathUtils.random(50, this.range);
             targets.push({
-                x: this.owner.x + Math.cos(angle) * dist,
-                y: this.owner.y + Math.sin(angle) * dist,
+                x: this.owner.x + Math.cos(angle) * distance,
+                y: this.owner.y + Math.sin(angle) * distance,
                 isRandom: true
             });
         }
 
-        // Create strikes
-        for (const target of targets) {
-            const damageCtx = this.getDamageContext(this.damage, 0.1);
-            const finalDamage = damageCtx.damage;
-
-            const strike = new LightningBolt(
-                target.x,
-                target.y,
-                this.strikeRadius,
-                finalDamage
-            );
-
-            this.strikes.push(strike);
-
-            // Damage enemies in radius
-            if (!('isRandom' in target)) {
-                for (const enemy of enemies) {
-                    if (enemy.destroyed) continue;
-
-                    const dx = enemy.x - target.x;
-                    const dy = enemy.y - target.y;
-                    const dist = Math.sqrt(dx * dx + dy * dy);
-
-                    if (dist < this.strikeRadius) {
-                        enemy.takeDamage(finalDamage, this.owner);
-                    }
-                }
-            }
+        for (let index = 0; index < targets.length; index++) {
+            const target = targets[index];
+            const damageContext = this.getDamageContext(this.damage, 0.1);
+            this.pendingStrikes.push({
+                id: `lightning:${this.owner.id}:${Date.now()}:${index}`,
+                x: target.x,
+                y: target.y,
+                radius: this.strikeRadius,
+                telegraphTimer: this.telegraphDuration,
+                telegraphDuration: this.telegraphDuration,
+                damage: damageContext.damage,
+                crit: damageContext.crit
+            });
         }
     }
 
     update(deltaTime: number, enemies: Enemy[] = []) {
-        // Update cooldown and auto-fire
+        this.hitRegistry.tick(deltaTime);
+
         if (this.cooldownTimer > 0) {
             this.cooldownTimer -= deltaTime;
         }
 
-        // Only fire if there are enemies in range
-        if (this.canFire() && enemies.length > 0) {
-            const hasValidTarget = enemies.some(e => {
-                const dx = e.x - this.owner.x;
-                const dy = e.y - this.owner.y;
+        if (this.canFire() && enemies.some((enemy) => !enemy.destroyed)) {
+            const hasValidTarget = enemies.some((enemy) => {
+                const dx = enemy.x - this.owner.x;
+                const dy = enemy.y - this.owner.y;
                 return dx * dx + dy * dy < this.range * this.range;
             });
 
@@ -249,17 +217,76 @@ export class LightningStrike extends Weapon {
             }
         }
 
-        // Update strikes
-        for (let i = this.strikes.length - 1; i >= 0; i--) {
-            this.strikes[i].update(deltaTime);
+        for (let index = this.pendingStrikes.length - 1; index >= 0; index--) {
+            const strike = this.pendingStrikes[index];
+            strike.telegraphTimer -= deltaTime;
 
-            if (this.strikes[i].dead) {
-                this.strikes.splice(i, 1);
+            if (strike.telegraphTimer > 0) {
+                continue;
+            }
+
+            this.resolveStrike(strike, enemies);
+            this.pendingStrikes.splice(index, 1);
+        }
+
+        for (let index = this.strikes.length - 1; index >= 0; index--) {
+            this.strikes[index].update(deltaTime);
+            if (this.strikes[index].dead) {
+                this.strikes.splice(index, 1);
             }
         }
     }
 
+    resolveStrike(strike: PendingStrike, enemies: Enemy[]) {
+        this.strikes.push(new LightningBolt(strike.x, strike.y, strike.radius));
+
+        for (const enemy of enemies) {
+            if (enemy.destroyed) continue;
+            const dx = enemy.x - strike.x;
+            const dy = enemy.y - strike.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance > strike.radius + enemy.size) continue;
+
+            enemy.takeDamage(
+                this.buildDamagePayload(
+                    `${strike.id}:${enemy.id}`,
+                    strike.damage,
+                    'lightning',
+                    {
+                        crit: strike.crit,
+                        staggerDuration: 0.18,
+                        invulnerabilityDuration: 0.05,
+                        knockback: {
+                            x: dx / (distance || 1),
+                            y: dy / (distance || 1),
+                            force: 180
+                        }
+                    }
+                )
+            );
+        }
+    }
+
     draw(ctx: CanvasRenderingContext2D) {
+        for (const strike of this.pendingStrikes) {
+            const progress = 1 - strike.telegraphTimer / strike.telegraphDuration;
+            const alpha = 0.12 + progress * 0.25;
+            const pulse = 0.9 + Math.sin((1 - strike.telegraphTimer) * 18) * 0.08;
+
+            ctx.save();
+            ctx.strokeStyle = `rgba(255, 220, 100, ${alpha})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(strike.x, strike.y, strike.radius * pulse, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = `rgba(255, 235, 160, ${alpha * 0.35})`;
+            ctx.beginPath();
+            ctx.arc(strike.x, strike.y, strike.radius * 0.4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+
         for (const strike of this.strikes) {
             strike.draw(ctx);
         }
@@ -271,5 +298,11 @@ export class LightningStrike extends Weapon {
             strikeCount: this.strikeCount,
             strikeRadius: this.strikeRadius
         };
+    }
+
+    cancel() {
+        super.cancel();
+        this.pendingStrikes = [];
+        this.strikes = [];
     }
 }

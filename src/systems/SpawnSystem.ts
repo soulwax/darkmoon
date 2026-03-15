@@ -11,6 +11,7 @@ import type { AssetLoader } from '../assets/AssetLoader';
 import { SpriteSheet, type SpriteSheetData } from '../assets/SpriteSheet';
 import type { GameConfig } from '../config/GameConfig';
 import type { Player } from '../entities/Player';
+import { DamageResolver } from '../combat/DamageResolver';
 
 type EnemyTypeKey = keyof typeof EnemyTypes;
 
@@ -41,13 +42,14 @@ export class SpawnSystem {
     camera: Camera;
     assetLoader: AssetLoader | null;
     spawnRate: number;
-    baseSpawnInterval: number;
-    spawnTimer: number;
+    spawnBudget: number;
+    spawnCadenceTimer: number;
     minSpawnDistance: number;
     spawnMargin: number;
     waveNumber: number;
     waveDuration: number;
     waveTimer: number;
+    elapsedTime: number;
     enemies: Enemy[];
     xpGems: XPGem[];
     powerUps: PowerUpPickup[];
@@ -58,6 +60,9 @@ export class SpawnSystem {
     spriteImages: Record<string, HTMLImageElement>;
     spriteSheets: Record<string, SpriteSheet>;
     unsubscribers: Array<() => void>;
+    spawnGracePeriod: number;
+    positionValidator: ((x: number, y: number) => boolean) | null;
+    damageResolver: DamageResolver | null;
 
     constructor(config: GameConfig, camera: Camera, assetLoader: AssetLoader | null = null) {
         this.config = config;
@@ -66,15 +71,16 @@ export class SpawnSystem {
 
         // Spawn settings
         this.spawnRate = config.gameplay?.enemySpawnRate || 1.0;
-        this.baseSpawnInterval = 2.0; // seconds
-        this.spawnTimer = 0;
-        this.minSpawnDistance = 100; // Min distance from player
-        this.spawnMargin = 50; // Spawn outside visible area
+        this.spawnBudget = 0;
+        this.spawnCadenceTimer = 0;
+        this.minSpawnDistance = 140;
+        this.spawnMargin = 96;
 
         // Wave system
         this.waveNumber = 0;
-        this.waveDuration = 30; // seconds between difficulty increases
+        this.waveDuration = 30;
         this.waveTimer = 0;
+        this.elapsedTime = 0;
 
         // Entity lists
         this.enemies = [];
@@ -95,6 +101,9 @@ export class SpawnSystem {
         this.spriteImages = {};
         this.spriteSheets = {};
         this.unsubscribers = [];
+        this.spawnGracePeriod = 1.5;
+        this.positionValidator = null;
+        this.damageResolver = null;
         this._loadSprites();
 
         // Setup event listeners
@@ -311,68 +320,65 @@ export class SpawnSystem {
         this.target = target;
     }
 
-    /**
-     * Get spawn interval based on wave
-     */
-    getSpawnInterval() {
-        // Decrease spawn interval as waves progress
-        const reduction = Math.min(this.waveNumber * 0.1, 0.7);
-        return (this.baseSpawnInterval * (1 - reduction)) / this.spawnRate;
+    setSpawnValidator(validator: ((x: number, y: number) => boolean) | null) {
+        this.positionValidator = validator;
     }
 
-    /**
-     * Get enemies per spawn based on wave
-     */
-    getEnemiesPerSpawn() {
-        return 1 + Math.floor(this.waveNumber / 2);
+    setDamageResolver(resolver: DamageResolver | null) {
+        this.damageResolver = resolver;
     }
 
-    /**
-     * Get available enemy types based on wave
-     */
+    getThreatBudgetCap() {
+        return Math.min(96, 18 + this.waveNumber * 7);
+    }
+
+    getThreatIncomePerSecond() {
+        return (4.5 + this.waveNumber * 1.6) * this.spawnRate;
+    }
+
+    getSpawnCadence() {
+        return Math.max(0.12, 0.52 - this.waveNumber * 0.018);
+    }
+
+    getAliveThreat() {
+        return this.enemies.reduce((total, enemy) => {
+            if (enemy.destroyed) return total;
+            return total + (enemy.typeDef.spawnThreat || 5);
+        }, 0);
+    }
+
     getAvailableTypes() {
-        // Start with basic sprite enemies
-        const types = ['slime'];
-
-        if (this.waveNumber >= 1) types.push('skeleton');
-        if (this.waveNumber >= 2) types.push('basic', 'fast');
-        if (this.waveNumber >= 4) types.push('tank');
-        if (this.waveNumber >= 6) types.push('elite');
-
-        return types;
+        return Object.entries(EnemyTypes)
+            .filter(([, definition]) => this.waveNumber >= (definition.unlockWave || 0))
+            .map(([key]) => key);
     }
 
-    /**
-     * Pick random enemy type with weighted probability
-     */
-    pickEnemyType(): EnemyTypeKey | string {
-        const types = this.getAvailableTypes();
-        const weights: Record<string, number> = {
-            slime: 40,
-            skeleton: 35,
-            basic: 25,
-            fast: 20,
-            tank: 10,
-            elite: 5
-        };
+    pickEnemyTypeForBudget() {
+        const available = this.getAvailableTypes().filter((type) => {
+            const definition = EnemyTypes[type as EnemyTypeKey];
+            return (definition.spawnThreat || 5) <= this.spawnBudget;
+        });
+
+        if (available.length === 0) {
+            return null;
+        }
 
         let totalWeight = 0;
-        for (const type of types) {
-            totalWeight += weights[type] || 10;
+        for (const type of available) {
+            totalWeight += EnemyTypes[type as EnemyTypeKey].spawnWeight || 1;
         }
 
         let random = Math.random() * totalWeight;
-        for (const type of types) {
-            random -= weights[type] || 10;
-            if (random <= 0) return type;
+        for (const type of available) {
+            random -= EnemyTypes[type as EnemyTypeKey].spawnWeight || 1;
+            if (random <= 0) {
+                return type;
+            }
         }
 
-        return 'slime';
+        return available[0];
     }
 
-    /**
-     * Get spawn position outside camera view
-     */
     getSpawnPosition() {
         if (!this.camera || !this.target) {
             return {
@@ -382,36 +388,62 @@ export class SpawnSystem {
         }
 
         const bounds = this.camera.getVisibleBounds();
+        const expandedBounds = {
+            x: bounds.x - 32,
+            y: bounds.y - 32,
+            width: bounds.width + 64,
+            height: bounds.height + 64
+        };
+        const requiredDistance = this.minSpawnDistance + Math.min(140, this.waveNumber * 10);
 
-        // Pick a random edge
-        const edge = MathUtils.randomInt(0, 3);
-        let x = 0;
-        let y = 0;
+        for (let attempt = 0; attempt < 24; attempt++) {
+            const edge = MathUtils.randomInt(0, 3);
+            let x = 0;
+            let y = 0;
 
-        switch (edge) {
-            case 0: // Top
-                x = MathUtils.random(bounds.x - this.spawnMargin, bounds.x + bounds.width + this.spawnMargin);
-                y = bounds.y - this.spawnMargin;
-                break;
-            case 1: // Right
-                x = bounds.x + bounds.width + this.spawnMargin;
-                y = MathUtils.random(bounds.y - this.spawnMargin, bounds.y + bounds.height + this.spawnMargin);
-                break;
-            case 2: // Bottom
-                x = MathUtils.random(bounds.x - this.spawnMargin, bounds.x + bounds.width + this.spawnMargin);
-                y = bounds.y + bounds.height + this.spawnMargin;
-                break;
-            case 3: // Left
-                x = bounds.x - this.spawnMargin;
-                y = MathUtils.random(bounds.y - this.spawnMargin, bounds.y + bounds.height + this.spawnMargin);
-                break;
+            switch (edge) {
+                case 0:
+                    x = MathUtils.random(bounds.x - this.spawnMargin, bounds.x + bounds.width + this.spawnMargin);
+                    y = bounds.y - this.spawnMargin;
+                    break;
+                case 1:
+                    x = bounds.x + bounds.width + this.spawnMargin;
+                    y = MathUtils.random(bounds.y - this.spawnMargin, bounds.y + bounds.height + this.spawnMargin);
+                    break;
+                case 2:
+                    x = MathUtils.random(bounds.x - this.spawnMargin, bounds.x + bounds.width + this.spawnMargin);
+                    y = bounds.y + bounds.height + this.spawnMargin;
+                    break;
+                default:
+                    x = bounds.x - this.spawnMargin;
+                    y = MathUtils.random(bounds.y - this.spawnMargin, bounds.y + bounds.height + this.spawnMargin);
+                    break;
+            }
+
+            x = MathUtils.clamp(x, 20, this.worldWidth - 20);
+            y = MathUtils.clamp(y, 20, this.worldHeight - 20);
+
+            const dx = x - this.target.x;
+            const dy = y - this.target.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            if (distance < requiredDistance) continue;
+            if (MathUtils.rectsIntersect(x - 16, y - 16, 32, 32, expandedBounds.x, expandedBounds.y, expandedBounds.width, expandedBounds.height)) {
+                continue;
+            }
+            if (this.positionValidator && !this.positionValidator(x, y)) {
+                continue;
+            }
+            if (this.enemies.some((enemy) => !enemy.destroyed && enemy.distanceToSquared({ x, y }) < 32 * 32)) {
+                continue;
+            }
+
+            return { x, y };
         }
 
-        // Clamp to world bounds
-        x = MathUtils.clamp(x, 20, this.worldWidth - 20);
-        y = MathUtils.clamp(y, 20, this.worldHeight - 20);
-
-        return { x, y };
+        return {
+            x: MathUtils.clamp(this.target.x + requiredDistance, 20, this.worldWidth - 20),
+            y: MathUtils.clamp(this.target.y, 20, this.worldHeight - 20)
+        };
     }
 
     /**
@@ -422,7 +454,8 @@ export class SpawnSystem {
         if (this.enemies.length >= this.maxEnemies) return null;
 
         const pos = this.getSpawnPosition();
-        const enemyType = type || this.pickEnemyType();
+        const enemyType = type || this.pickEnemyTypeForBudget();
+        if (!enemyType) return null;
 
         // Get sprite image for this enemy type
         const spriteImage = this.spriteImages[enemyType] || null;
@@ -432,12 +465,14 @@ export class SpawnSystem {
         if (this.target) {
             enemy.setTarget(this.target);
         }
+        enemy.setDamageResolver(this.damageResolver);
 
         this.enemies.push(enemy);
 
         eventBus.emit(GameEvents.ENEMY_SPAWNED, {
             enemy: enemy,
-            type: enemyType
+            type: enemyType,
+            wave: this.waveNumber
         });
 
         return enemy;
@@ -479,24 +514,36 @@ export class SpawnSystem {
      * @param {number} deltaTime
      */
     update(deltaTime: number) {
-        // Update wave timer
-        this.waveTimer += deltaTime;
-        if (this.waveTimer >= this.waveDuration) {
-            this.waveTimer -= this.waveDuration;
-            this.waveNumber++;
+        this.elapsedTime += deltaTime;
+        const nextWave = Math.floor(this.elapsedTime / this.waveDuration);
+        if (nextWave !== this.waveNumber) {
+            this.waveNumber = nextWave;
             console.log(`Wave ${this.waveNumber} started`);
         }
+        this.waveTimer = this.elapsedTime - this.waveNumber * this.waveDuration;
 
-        // Update spawn timer
-        this.spawnTimer += deltaTime;
-        const spawnInterval = this.getSpawnInterval();
+        this.spawnBudget = Math.min(
+            this.getThreatBudgetCap(),
+            this.spawnBudget + this.getThreatIncomePerSecond() * deltaTime
+        );
+        this.spawnCadenceTimer += deltaTime;
 
-        if (this.spawnTimer >= spawnInterval) {
-            this.spawnTimer -= spawnInterval;
-
-            const count = this.getEnemiesPerSpawn();
-            for (let i = 0; i < count; i++) {
-                this.spawnEnemy();
+        if (
+            this.elapsedTime >= this.spawnGracePeriod &&
+            this.spawnCadenceTimer >= this.getSpawnCadence() &&
+            this.getAliveThreat() < this.getThreatBudgetCap() &&
+            this.enemies.length < this.maxEnemies
+        ) {
+            const enemyType = this.pickEnemyTypeForBudget();
+            if (enemyType) {
+                const spawned = this.spawnEnemy(enemyType);
+                if (spawned) {
+                    this.spawnBudget = Math.max(
+                        0,
+                        this.spawnBudget - (EnemyTypes[enemyType as EnemyTypeKey].spawnThreat || 5)
+                    );
+                    this.spawnCadenceTimer = 0;
+                }
             }
         }
 
@@ -597,7 +644,9 @@ export class SpawnSystem {
         this.powerUps = [];
         this.waveNumber = 0;
         this.waveTimer = 0;
-        this.spawnTimer = 0;
+        this.elapsedTime = 0;
+        this.spawnBudget = 0;
+        this.spawnCadenceTimer = 0;
     }
 
     destroy() {

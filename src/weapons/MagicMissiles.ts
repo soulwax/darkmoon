@@ -129,6 +129,16 @@ export class MagicMissiles extends Weapon {
 
             const damageCtx = this.getDamageContext(this.damage, 0.12);
             const finalDamage = damageCtx.damage;
+            const damagePayload = this.buildDamagePayload(
+                `magic-missile:${this.owner.id}:${Date.now()}:${i}`,
+                finalDamage,
+                'arcane',
+                {
+                    crit: damageCtx.crit,
+                    staggerDuration: 0.06,
+                    invulnerabilityDuration: 0.04
+                }
+            );
 
             const projectile = new Projectile(this.owner.x, this.owner.y, {
                 damage: finalDamage,
@@ -142,7 +152,8 @@ export class MagicMissiles extends Weapon {
                 homing: true,
                 homingStrength: 3,
                 target: target,
-                lifetime: 3
+                lifetime: 3,
+                damagePayload
             });
 
             this.projectiles.push(projectile);
@@ -175,7 +186,13 @@ export class MagicMissiles extends Weapon {
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < projectile.size + enemy.size) {
-                    enemy.takeDamage(projectile.damage, this.owner);
+                    enemy.takeDamage(
+                        projectile.damagePayload || this.buildDamagePayload(
+                            `magic-missile-hit:${projectile.id}:${enemy.id}`,
+                            projectile.damage,
+                            'arcane'
+                        )
+                    );
                     projectile.registerHit(enemy);
                 }
             }

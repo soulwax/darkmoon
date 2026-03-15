@@ -12,6 +12,10 @@ import type { InputManager } from '../input/InputManager';
 import type { Weapon } from '../weapons/Weapon';
 import type { Camera } from '../graphics/Camera';
 import type { Direction } from '../core/Math';
+import type { Enemy } from './Enemy';
+import { CombatStateComponent } from '../ecs/components/CombatStateComponent';
+import { DamageResolver } from '../combat/DamageResolver';
+import type { CombatSource, DamagePayload } from '../combat/CombatTypes';
 
 export interface PlayerStats {
     moveSpeed: number;
@@ -38,6 +42,20 @@ export interface PlayerEffect {
     };
 }
 
+export interface PlayerHitResult {
+    applied: boolean;
+    rawDamage: number;
+    shieldDamage: number;
+    healthDamage: number;
+    healthBefore: number;
+    healthAfter: number;
+    shieldBefore: number;
+    shieldAfter: number;
+    defeated: boolean;
+}
+
+type PlayerCombatState = 'alive' | 'dying' | 'dead';
+
 export class Player extends Entity {
     config: GameConfig;
     xp: number;
@@ -56,6 +74,9 @@ export class Player extends Entity {
     shieldImpactTimer: number;
     effects: PlayerEffect[];
     animationLockTimer: number;
+    combatState: PlayerCombatState;
+    damageResolver: DamageResolver | null;
+    receivedHitCounter: number;
 
     constructor(x: number, y: number, config: GameConfig, spriteSheet: SpriteSheet | null) {
         super(x, y);
@@ -100,6 +121,9 @@ export class Player extends Entity {
 
         // Prevent movement state from instantly overriding short one-shot animations (attacks).
         this.animationLockTimer = 0;
+        this.combatState = 'alive';
+        this.damageResolver = null;
+        this.receivedHitCounter = 0;
 
         // Setup components
         this._setupComponents(config, spriteSheet);
@@ -108,8 +132,7 @@ export class Player extends Entity {
         const health = this.getComponent<HealthComponent>('HealthComponent');
         if (health) {
             health.onDeath = () => {
-                const movement = this.getComponent<MovementComponent>('MovementComponent');
-                movement?.stop();
+                this.beginDeath();
             };
         }
     }
@@ -154,6 +177,35 @@ export class Player extends Entity {
             offsetY: 8 // Offset down for feet collision
         });
         this.addComponent(collider);
+
+        const combat = new CombatStateComponent('player', 'player');
+        combat.setState('idle');
+        this.addComponent(combat);
+    }
+
+    setDamageResolver(resolver: DamageResolver | null) {
+        this.damageResolver = resolver;
+    }
+
+    getCombatState() {
+        return this.getComponent<CombatStateComponent>('CombatStateComponent');
+    }
+
+    setSpawnProtection(duration: number) {
+        this.getCombatState()?.setSpawnProtection(duration);
+    }
+
+    setCombatActionState(state: 'windup' | 'active' | 'recovery', duration: number = 0) {
+        if (this.combatState !== 'alive') return;
+        this.getCombatState()?.setState(state, duration);
+    }
+
+    clearCombatActionState() {
+        const combat = this.getCombatState();
+        if (!combat || this.combatState !== 'alive') return;
+        if (combat.state === 'windup' || combat.state === 'active' || combat.state === 'recovery') {
+            combat.setState('idle');
+        }
     }
 
     /**
@@ -163,6 +215,11 @@ export class Player extends Entity {
     handleInput(inputManager: InputManager) {
         const movement = this.getComponent<MovementComponent>('MovementComponent');
         if (!movement) return;
+
+        if (!this.canControl()) {
+            movement.stop();
+            return;
+        }
 
         // Get movement vector
         const moveVec = inputManager.getMovementVector();
@@ -192,6 +249,8 @@ export class Player extends Entity {
     }
 
     lockAnimation(state: string, direction: Direction, durationSeconds: number, speed: number = 1.0) {
+        if (!this.canUseWeapons()) return;
+
         const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
         if (!animator) return;
 
@@ -429,6 +488,138 @@ export class Player extends Entity {
         this.shield = this.getMaxShield();
     }
 
+    isAlive() {
+        const combat = this.getCombatState();
+        return this.combatState === 'alive' && combat?.state !== 'dead' && combat?.state !== 'dying';
+    }
+
+    canControl() {
+        return this.combatState === 'alive' && (this.getCombatState()?.canMove() ?? true);
+    }
+
+    canUseWeapons() {
+        return this.combatState === 'alive' && (this.getCombatState()?.canAttack() ?? true);
+    }
+
+    beginDeath() {
+        if (this.combatState !== 'alive') return;
+
+        this.combatState = 'dying';
+        this.animationLockTimer = 0;
+        this.getCombatState()?.setState('dying');
+
+        const movement = this.getComponent<MovementComponent>('MovementComponent');
+        movement?.stop();
+
+        for (const weapon of this.weapons) {
+            weapon.cancel();
+        }
+
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        if (animator?.animator.hasAnimation('death')) {
+            animator.play('death', false, true);
+            animator.setSpeed(1.0);
+        }
+    }
+
+    finalizeDeath() {
+        if (this.combatState === 'dead') return;
+        this.combatState = 'dead';
+        this.getCombatState()?.setState('dead');
+    }
+
+    receiveHit(amount: number | DamagePayload, source: Entity | null = null): PlayerHitResult {
+        if (this.damageResolver) {
+            const payload = this._normalizeIncomingDamage(amount, source);
+            const result = this.damageResolver.applyToPlayer(this, payload);
+
+            if (result.applied && !result.defeated) {
+                const sourceDirection = this._resolveSourceDirection(payload.source);
+                const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+                if (animator?.animator.hasAnimation(`${sourceDirection}_hurt`) || animator?.animator.hasAnimation('hurt')) {
+                    animator.setState('hurt', sourceDirection);
+                    animator.setSpeed(1);
+                    this.animationLockTimer = Math.max(this.animationLockTimer, 0.12);
+                }
+            }
+
+            return {
+                applied: result.applied,
+                rawDamage: result.rawDamage,
+                shieldDamage: result.shieldDamage,
+                healthDamage: result.healthDamage,
+                healthBefore: result.healthBefore,
+                healthAfter: result.healthAfter,
+                shieldBefore: result.shieldBefore,
+                shieldAfter: result.shieldAfter,
+                defeated: result.defeated
+            };
+        }
+
+        const rawAmount = typeof amount === 'number' ? amount : amount.amount;
+        const health = this.getComponent<HealthComponent>('HealthComponent');
+        const healthBefore = health?.health ?? 0;
+        const shieldBefore = this.getShield();
+
+        if (!health || this.combatState !== 'alive' || health.isDead || health.invulnerable || rawAmount <= 0) {
+            return {
+                applied: false,
+                rawDamage: rawAmount,
+                shieldDamage: 0,
+                healthDamage: 0,
+                healthBefore,
+                healthAfter: healthBefore,
+                shieldBefore,
+                shieldAfter: shieldBefore,
+                defeated: health?.isDead ?? false
+            };
+        }
+
+        const remainingDamage = this.absorbShieldDamage(rawAmount);
+        const shieldDamage = Math.max(0, shieldBefore - this.getShield());
+
+        if (remainingDamage > 0) {
+            health.takeDamage(remainingDamage, source, {
+                applyInvulnerability: false,
+                emitPlayerEvents: false
+            });
+        }
+
+        if (!health.isDead) {
+            health.setInvulnerability(health.invulnerabilityDuration);
+        }
+
+        const healthAfter = health.health;
+        const shieldAfter = this.getShield();
+        const healthDamage = Math.max(0, healthBefore - healthAfter);
+
+        eventBus.emit(GameEvents.PLAYER_DAMAGED, {
+            entity: this,
+            amount: rawAmount,
+            healthDamage,
+            shieldDamage,
+            remaining: healthAfter,
+            shield: shieldAfter,
+            source
+        });
+
+        if (health.isDead) {
+            this.beginDeath();
+        }
+
+        return {
+            applied: true,
+            rawDamage: rawAmount,
+            shieldDamage,
+            healthDamage,
+            healthBefore,
+            healthAfter,
+            shieldBefore,
+            shieldAfter,
+            defeated: health.isDead
+        };
+    }
+
     getProximityAutoAttackDamage() {
         const base = 5 + this.level;
         return Math.max(1, Math.floor(base * this.getDamageMultiplier()));
@@ -470,10 +661,7 @@ export class Player extends Entity {
             case 'shield': {
                 this.restoreShield(Math.max(20, Math.floor(this.getMaxShield() * 0.65)));
                 const health = this.getComponent<HealthComponent>('HealthComponent');
-                if (health) {
-                    health.invulnerable = true;
-                    health.invulnerabilityTimer = Math.max(health.invulnerabilityTimer, 1.5);
-                }
+                health?.setInvulnerability(1.5);
                 break;
             }
             case 'haste':
@@ -529,11 +717,21 @@ export class Player extends Entity {
 
         this.weapons = [];
         this.effects = [];
+        this.combatState = 'alive';
+        this.animationLockTimer = 0;
+        this.receivedHitCounter = 0;
 
         // Reset health
         const health = this.getComponent<HealthComponent>('HealthComponent');
         if (health) {
             health.revive(1.0);
+        }
+
+        const combat = this.getCombatState();
+        if (combat) {
+            combat.setState('idle');
+            combat.invulnerabilityTimer = 0;
+            combat.spawnProtectionTimer = 0;
         }
 
         // Reset movement
@@ -545,12 +743,26 @@ export class Player extends Entity {
             movement.speed = this.baseMoveSpeed;
         }
 
+        const animator = this.getComponent<AnimatorComponent>('AnimatorComponent');
+        if (animator) {
+            animator.setState('idle', 'down');
+            animator.setSpeed(1.0);
+        }
+
         this.baseShieldCapacity = this.config.player?.shieldCapacity || 45;
         this.baseShieldRechargeRate = this.config.player?.shieldRechargeRate || 16;
         this.shieldRechargeDelay = this.config.player?.shieldRechargeDelay || 2.5;
         this.shield = this.getMaxShield();
         this.shieldRechargeDelayTimer = 0;
         this.shieldImpactTimer = 0;
+    }
+
+    updateWeapons(deltaTime: number, enemies: Enemy[] = []) {
+        if (!this.canUseWeapons()) return;
+
+        for (const weapon of this.weapons) {
+            weapon.update(deltaTime, enemies);
+        }
     }
 
     update(deltaTime: number) {
@@ -577,6 +789,20 @@ export class Player extends Entity {
             this.shieldImpactTimer -= deltaTime;
         }
 
+        const combat = this.getCombatState();
+        const movement = this.getComponent<MovementComponent>('MovementComponent');
+        if (
+            combat &&
+            this.combatState === 'alive' &&
+            combat.state !== 'windup' &&
+            combat.state !== 'active' &&
+            combat.state !== 'recovery' &&
+            combat.state !== 'hurt' &&
+            combat.state !== 'staggered'
+        ) {
+            combat.setState(movement?.isMoving() ? 'moving' : 'idle');
+        }
+
         // Update timed effects
         if (this.effects.length > 0) {
             for (let i = this.effects.length - 1; i >= 0; i--) {
@@ -587,11 +813,50 @@ export class Player extends Entity {
             }
             this._syncMovementSpeed();
         }
+    }
 
-        // Update weapons
-        for (const weapon of this.weapons) {
-            weapon.update(deltaTime);
+    _normalizeIncomingDamage(amount: number | DamagePayload, source: Entity | null): DamagePayload {
+        if (typeof amount !== 'number') {
+            return amount;
         }
+
+        this.receivedHitCounter += 1;
+
+        return {
+            id: `player-hit:${this.id}:${this.receivedHitCounter}`,
+            source: this._toCombatSource(source),
+            amount,
+            baseAmount: amount,
+            damageType: 'contact',
+            invulnerabilityDuration: this.getComponent<HealthComponent>('HealthComponent')?.invulnerabilityDuration ?? 0.5
+        };
+    }
+
+    _toCombatSource(source: Entity | null): CombatSource | null {
+        if (!source) return null;
+
+        return {
+            id: source.id,
+            type: (source as { type?: string }).type || source.constructor.name || 'entity',
+            faction: source.hasTag?.('enemy') ? 'enemy' : 'neutral',
+            entity: source,
+            x: source.x,
+            y: source.y
+        };
+    }
+
+    _resolveSourceDirection(source: CombatSource | null): Direction {
+        if (!source) {
+            return 'down';
+        }
+
+        const dx = source.x - this.x;
+        const dy = source.y - this.y;
+        if (Math.abs(dx) > Math.abs(dy)) {
+            return dx > 0 ? 'right' : 'left';
+        }
+
+        return dy > 0 ? 'down' : 'up';
     }
 
     draw(ctx: CanvasRenderingContext2D, camera: Camera) {

@@ -57,7 +57,7 @@ export class AnimatorComponent extends Component {
         this.animator.flipX = resolved.flipX;
 
         if (resolved.name && this.animator.hasAnimation(resolved.name)) {
-            const loop = state !== 'attack';
+            const loop = state !== 'attack' && state !== 'hurt' && state !== 'death';
             this.play(resolved.name, loop);
         }
     }
@@ -118,8 +118,12 @@ export class AnimatorComponent extends Component {
         if (state === 'attack') add('attack_down', false);
 
         for (const candidate of candidates) {
-            if (this.animator.hasAnimation(candidate.name)) {
-                return candidate;
+            const binding = this.spriteSheet.getAnimationBinding(candidate.name);
+            if (binding) {
+                return {
+                    name: candidate.name,
+                    flipX: candidate.flipX !== binding.flipX
+                };
             }
         }
 
@@ -131,7 +135,7 @@ export class AnimatorComponent extends Component {
      */
     _onAnimationEnd(animationName: string) {
         // Return to idle after non-looping animations
-        if (this.state === 'attack') {
+        if (this.state === 'attack' || this.state === 'hurt') {
             this.setState('idle');
         }
     }

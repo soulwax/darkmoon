@@ -6,6 +6,7 @@ import type { SpriteSheet } from '../assets/SpriteSheet';
 import type { GameConfig } from '../config/GameConfig';
 import { DebugLogger } from '../core/DebugLogger';
 import { eventBus, GameEvents } from '../core/EventBus';
+import { DamageResolver } from '../combat/DamageResolver';
 import type { Component } from '../ecs/Component';
 import type { ColliderComponent } from '../ecs/components/ColliderComponent';
 import type { HealthComponent } from '../ecs/components/HealthComponent';
@@ -20,6 +21,7 @@ import type {
     PlaytestSceneSnapshot,
     PlaytestUpgradeOptionSnapshot
 } from '../playtest/PlaytestTypes';
+import { RunStateMachine } from '../gameplay/RunStateMachine';
 import { ParticleSystem } from '../systems/ParticleSystem';
 import { SpawnSystem } from '../systems/SpawnSystem';
 import { UpgradeSystem, type UpgradeOption } from '../systems/UpgradeSystem';
@@ -101,6 +103,8 @@ interface EnemyProximitySnapshot {
     distance: number;
 }
 
+type RunState = 'starting' | 'playing' | 'levelup' | 'dying' | 'gameover';
+
 export class GameScene extends Scene {
     config: GameConfig;
     assetLoader: AssetLoader;
@@ -138,6 +142,11 @@ export class GameScene extends Scene {
     lastProximityLogTime: number;
     lastContactGateLogTime: number;
     playtestBeforeUpdateListeners: Array<(deltaTime: number) => void>;
+    runState: RunState;
+    runStateMachine: RunStateMachine;
+    damageResolver: DamageResolver;
+    deathTransitionTimer: number;
+    deathTransitionDuration: number;
 
     constructor(game: Game, config: GameConfig, assetLoader: AssetLoader) {
         super(game);
@@ -181,12 +190,18 @@ export class GameScene extends Scene {
         this.lastProximityLogTime = -Infinity;
         this.lastContactGateLogTime = -Infinity;
         this.playtestBeforeUpdateListeners = [];
+        this.runState = 'starting';
+        this.runStateMachine = new RunStateMachine('menu');
+        this.damageResolver = new DamageResolver();
+        this.deathTransitionTimer = 0;
+        this.deathTransitionDuration = 0.55;
 
         this._setupEventListeners();
     }
 
     _setupEventListeners() {
         eventBus.on(GameEvents.PLAYER_LEVELUP, (data: { player: Player; level: number; xpToNext: number }) => {
+            if (this.runState !== 'playing') return;
             this._pushDebugLog('player_levelup_event', 'warn', {
                 level: data.level,
                 xpToNext: data.xpToNext,
@@ -296,7 +311,33 @@ export class GameScene extends Scene {
 
                 for (const enemy of enemies) {
                     if (enemy.destroyed) continue;
-                    enemy.takeDamage(bombDamage, this.player);
+                    enemy.takeDamage({
+                        id: `bomb:${this.player.id}:${enemy.id}:${Math.floor(this.gameTime * 1000)}`,
+                        source: {
+                            id: this.player.id,
+                            type: 'bomb',
+                            faction: 'player',
+                            entity: this.player,
+                            x: this.player.x,
+                            y: this.player.y
+                        },
+                        amount: bombDamage,
+                        baseAmount: bombDamage,
+                        damageType: 'lightning',
+                        crit,
+                        staggerDuration: 0.18,
+                        invulnerabilityDuration: 0.05,
+                        knockback: (() => {
+                            const dx = enemy.x - this.player.x;
+                            const dy = enemy.y - this.player.y;
+                            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                            return {
+                                x: dx / dist,
+                                y: dy / dist,
+                                force: 120
+                            };
+                        })()
+                    });
                 }
 
                 this.camera?.shake(6, 0.25);
@@ -314,8 +355,7 @@ export class GameScene extends Scene {
                 deathDebug: this.deathDebugInfo,
                 lastDamageSnapshot: this.lastDamageSnapshot
             });
-            const message = this._formatDeathMessage('You were overwhelmed. Start again?');
-            this._emitGameOver(message);
+            this._beginDeathTransition(this._formatDeathMessage('You were overwhelmed. Start again?'));
         });
     }
 
@@ -515,7 +555,7 @@ export class GameScene extends Scene {
         const shield = this.player.getShield();
 
         return {
-            phase: this.gameOverTriggered ? 'gameover' : 'playing',
+            phase: this.runState === 'gameover' ? 'gameover' : this.runState,
             time: Number(this.gameTime.toFixed(3)),
             killCount: this.killCount,
             damageDealt: this.damageDealt,
@@ -641,7 +681,7 @@ export class GameScene extends Scene {
 
     _emitGameOver(message: string = 'You were overwhelmed. Start again?') {
         if (this.gameOverTriggered) return;
-        this.gameOverTriggered = true;
+        this._setRunState('gameover', 'emit_game_over');
 
         const debugPayload: DeathDebugInfo = this.deathDebugInfo || {
             reason: 'unknown',
@@ -666,77 +706,67 @@ export class GameScene extends Scene {
         };
         this.lastGameOverPayload = payload;
         this._pushDebugLog(`game_over -> ${this._formatDeathDebug(debugPayload)}`, 'warn', payload);
-
-        // End the game loop deterministically.
-        this.game.endGame();
         eventBus.emit(GameEvents.GAME_OVER, payload);
-        this._forceShowGameOverOverlay(payload);
-        this._ensureGameOverOverlayVisible(payload);
     }
 
-    _ensureGameOverOverlayVisible(data: GameOverPayload, attempt: number = 0) {
-        const gameOver = document.getElementById('gameOverScreen');
-        const visible = !!gameOver && gameOver.style.display === 'flex' && !gameOver.classList.contains('hidden');
-        if (visible || attempt >= 12) return;
+    _setRunState(next: RunState, reason: string, data?: unknown) {
+        const previous = this.runState;
+        if (previous !== next) {
+            this.runStateMachine.transition(next, reason, data);
+        }
+        this.runState = next;
+        this.showingLevelUp = next === 'levelup';
+        this.gameOverTriggered = next === 'gameover';
 
-        this._forceShowGameOverOverlay(data);
-        window.setTimeout(() => {
-            this._ensureGameOverOverlayVisible(data, attempt + 1);
-        }, 80);
+        if (next !== 'levelup' && this.levelUpScreen?.visible) {
+            this.levelUpScreen.hide();
+        }
+
+        eventBus.emit(GameEvents.RUN_PHASE_CHANGED, {
+            previous,
+            next,
+            reason,
+            data: data ?? null,
+            runTime: this.gameTime
+        });
+
+        this._pushDebugLog(`run_state:${previous}->${next}`, 'info', {
+            reason,
+            data: data ?? null
+        });
     }
 
-    _forceShowGameOverOverlay(data: GameOverPayload) {
-        const gameOver = document.getElementById('gameOverScreen');
-        if (gameOver) {
-            gameOver.classList.remove('hidden');
-            gameOver.style.display = 'flex';
+    _beginDeathTransition(message: string) {
+        if (this.runState === 'dying' || this.runState === 'gameover') return;
+
+        this.deathTransitionTimer = this.deathTransitionDuration;
+        this.inputManager.clearVirtualActions();
+        this.player?.beginDeath();
+        this._setRunState('dying', 'player_died', {
+            message,
+            deathDebug: this.deathDebugInfo,
+            lastDamageSnapshot: this.lastDamageSnapshot
+        });
+    }
+
+    _updateDeathTransition(deltaTime: number) {
+        this.deathTransitionTimer = Math.max(0, this.deathTransitionTimer - deltaTime);
+        this.particleSystem?.update(deltaTime);
+        this.camera?.update(deltaTime);
+
+        if (this.deathTransitionTimer > 0) {
+            return;
         }
 
-        const timeEl = document.getElementById('finalTime');
-        const killsEl = document.getElementById('finalKills');
-        const levelEl = document.getElementById('finalLevel');
-        const damageEl = document.getElementById('finalDamage');
-        const gemsEl = document.getElementById('finalGems');
-        const messageEl = document.getElementById('deathMessage');
-        const debugEl = document.getElementById('deathDebug');
-
-        if (timeEl && data.time !== undefined) {
-            const minutes = Math.floor(data.time / 60);
-            const seconds = Math.floor(data.time % 60);
-            timeEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        if (killsEl && data.kills !== undefined) {
-            killsEl.textContent = data.kills.toString();
-        }
-
-        if (levelEl) {
-            levelEl.textContent = (data.level ?? 1).toString();
-        }
-
-        if (damageEl) {
-            damageEl.textContent = Math.floor(data.damageDealt ?? 0).toLocaleString();
-        }
-
-        if (gemsEl) {
-            gemsEl.textContent = (data.gemsCollected ?? 0).toLocaleString();
-        }
-
-        if (messageEl) {
-            messageEl.textContent = data.message || 'You died.';
-        }
-
-        if (debugEl) {
-            const debugText = this._formatDeathDebug(data.debug);
-            debugEl.textContent = debugText;
-            debugEl.style.display = debugText ? 'block' : 'none';
-        }
+        this.player?.finalizeDeath();
+        this._emitGameOver(this._formatDeathMessage('You were overwhelmed. Start again?'));
     }
 
     onEnter(data: Record<string, unknown> = {}) {
         super.onEnter(data);
 
-        // Setup input
+        // Setup input — reset stale key state from any previous session
+        this.inputManager.reset();
         this.inputManager.setCanvas(this.game.canvas);
 
         // Setup camera
@@ -773,6 +803,7 @@ export class GameScene extends Scene {
             this.config,
             playerSprite
         );
+        this.player.setDamageResolver(this.damageResolver);
 
         // Give starting weapon (Sword for melee combat)
         this.player.addWeapon(Sword);
@@ -781,6 +812,8 @@ export class GameScene extends Scene {
         // Setup spawn system with asset loader for enemy sprites
         this.spawnSystem = new SpawnSystem(this.config, this.camera, this.assetLoader);
         this.spawnSystem.setTarget(this.player);
+        this.spawnSystem.setDamageResolver(this.damageResolver);
+        this.spawnSystem.setSpawnValidator((x, y) => !this._circleIntersectsBlockedTiles(x, y, 18));
 
         // Setup camera to follow player
         this.camera.follow(this.player);
@@ -801,8 +834,13 @@ export class GameScene extends Scene {
         this.nearestChest = null;
         this.enemyContactCooldowns.clear();
         this.playerContactDamageCooldown = 0;
+        this.runStateMachine = new RunStateMachine('menu');
+        this.runStateMachine.transition('starting', 'scene_enter');
+        this.runState = 'starting';
         this.gameOverTriggered = false;
-        this.playerSpawnInvulnerabilityTimer = 1.2;
+        this.playerSpawnInvulnerabilityTimer = 0.8;
+        this.player.setSpawnProtection(this.playerSpawnInvulnerabilityTimer);
+        this.deathTransitionTimer = 0;
         this.lastDamageSnapshot = null;
         this.deathDebugInfo = null;
         this.lastGameOverPayload = null;
@@ -811,6 +849,7 @@ export class GameScene extends Scene {
         this.lastProximityBand = 'none';
         this.lastProximityLogTime = -Infinity;
         this.lastContactGateLogTime = -Infinity;
+        this.levelUpScreen.hide();
         this._pushDebugLog('Scene entered');
     }
 
@@ -825,8 +864,11 @@ export class GameScene extends Scene {
         this.nearestChest = null;
         this.enemyContactCooldowns.clear();
         this.playerContactDamageCooldown = 0;
+        this.runState = 'gameover';
+        this.runStateMachine = new RunStateMachine('gameover');
         this.gameOverTriggered = false;
         this.playerSpawnInvulnerabilityTimer = 0;
+        this.deathTransitionTimer = 0;
         this.lastDamageSnapshot = null;
         this.deathDebugInfo = null;
         this.lastGameOverPayload = null;
@@ -834,6 +876,7 @@ export class GameScene extends Scene {
         this.lastProximityBand = 'none';
         this.lastProximityLogTime = -Infinity;
         this.lastContactGateLogTime = -Infinity;
+        this.levelUpScreen?.hide();
         this._pushDebugLog('Scene exited');
     }
 
@@ -1155,7 +1198,7 @@ export class GameScene extends Scene {
     }
 
     _showLevelUpScreen() {
-        this.showingLevelUp = true;
+        this._setRunState('levelup', 'player_levelup');
         this._pushDebugLog('level_up_screen_open', 'warn', {
             level: this.player?.level ?? null,
             xp: this.player?.xp ?? null,
@@ -1166,7 +1209,9 @@ export class GameScene extends Scene {
         const handleSelection = (selected: UpgradeOptionBase) => {
             try {
                 this.upgradeSystem.applyUpgrade(selected as UpgradeOption);
-                this.showingLevelUp = false;
+                this._setRunState('playing', 'level_up_selection_applied', {
+                    selected
+                });
                 this._pushDebugLog('level_up_selection_applied', 'info', {
                     selected,
                     level: this.player?.level ?? null,
@@ -1182,11 +1227,13 @@ export class GameScene extends Scene {
                     error: err
                 });
 
-                this.showingLevelUp = true;
+                this._setRunState('levelup', 'level_up_selection_failed_restore', {
+                    selected
+                });
                 try {
                     this.levelUpScreen.show(options, handleSelection);
                 } catch (showError) {
-                    this.showingLevelUp = false;
+                    this._setRunState('playing', 'level_up_restore_failed');
                     const showErr = showError instanceof Error
                         ? { name: showError.name, message: showError.message, stack: showError.stack }
                         : { name: 'NonErrorThrow', message: String(showError), stack: null };
@@ -1202,7 +1249,7 @@ export class GameScene extends Scene {
         try {
             this.levelUpScreen.show(options, handleSelection);
         } catch (error) {
-            this.showingLevelUp = false;
+            this._setRunState('playing', 'level_up_show_failed');
             const err = error instanceof Error
                 ? { name: error.name, message: error.message, stack: error.stack }
                 : { name: 'NonErrorThrow', message: String(error), stack: null };
@@ -1399,168 +1446,32 @@ export class GameScene extends Scene {
     }
 
     _resolvePlayerEnemyContact(enemy: Enemy) {
-        if (enemy.destroyed) return;
+        if (enemy.destroyed || (this.runState !== 'playing' && this.runState !== 'starting') || !this.player.isAlive()) return;
 
-        const initialDx = enemy.x - this.player.x;
-        const initialDy = enemy.y - this.player.y;
-        const initialDistance = Number((Math.sqrt(initialDx * initialDx + initialDy * initialDy) || 0).toFixed(2));
-        const enemyContactCooldown = this.enemyContactCooldowns.get(enemy.id) || 0;
-        if (enemyContactCooldown > 0) {
-            if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
-                this.lastContactGateLogTime = this.gameTime;
-                this._pushDebugLog('enemy_contact_skipped_enemy_cooldown', 'debug', {
-                    enemyId: enemy.id,
-                    enemyType: enemy.type || 'enemy',
-                    distance: initialDistance,
-                    cooldownRemaining: Number(enemyContactCooldown.toFixed(3))
-                });
-            }
-            return;
-        }
-        if (this.playerSpawnInvulnerabilityTimer > 0) {
-            if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
-                this.lastContactGateLogTime = this.gameTime;
-                this._pushDebugLog('enemy_contact_skipped_spawn_invulnerability', 'debug', {
-                    enemyId: enemy.id,
-                    enemyType: enemy.type || 'enemy',
-                    distance: initialDistance,
-                    invulnerabilityRemaining: Number(this.playerSpawnInvulnerabilityTimer.toFixed(3))
-                });
-            }
-            return;
-        }
-
-        const proximityDamage = this.player.getProximityAutoAttackDamage();
-        const knockbackStrength = this.player.getProximityAutoAttackKnockback();
-        const contactInterval = this.player.getProximityContactInterval();
         const playerCollider = this.player.getComponent<ColliderComponent>('ColliderComponent');
         const enemyCollider = enemy.getComponent<ColliderComponent>('ColliderComponent');
-        const enemyHealth = enemy.getComponent<HealthComponent>('HealthComponent');
-        const enemyHealthBefore = enemyHealth?.health ?? null;
-
-        // Require meaningful overlap so "near misses" don't count as contact hits.
-        if (
-            playerCollider?.type === 'circle' &&
-            enemyCollider?.type === 'circle'
-        ) {
+        if (playerCollider?.type === 'circle' && enemyCollider?.type === 'circle') {
             const playerCenterX = this.player.x + playerCollider.offsetX;
             const playerCenterY = this.player.y + playerCollider.offsetY;
             const enemyCenterX = enemy.x + enemyCollider.offsetX;
             const enemyCenterY = enemy.y + enemyCollider.offsetY;
             const dx = enemyCenterX - playerCenterX;
             const dy = enemyCenterY - playerCenterY;
-            const contactRadius = Math.max(6, playerCollider.radius + enemyCollider.radius - 6);
+            const distance = Math.sqrt(dx * dx + dy * dy) || 1;
+            const minDistance = playerCollider.radius + enemyCollider.radius;
+            const overlap = minDistance - distance;
 
-            if ((dx * dx + dy * dy) > (contactRadius * contactRadius)) {
-                if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
-                    this.lastContactGateLogTime = this.gameTime;
-                    this._pushDebugLog('enemy_contact_overlap_rejected', 'debug', {
-                        enemyId: enemy.id,
-                        enemyType: enemy.type || 'enemy',
-                        centerDistance: Number(Math.sqrt(dx * dx + dy * dy).toFixed(2)),
-                        requiredContactRadius: Number(contactRadius.toFixed(2))
-                    });
-                }
-                return;
+            if (overlap > 0) {
+                const nx = dx / distance;
+                const ny = dy / distance;
+                const separation = overlap + 1;
+
+                this.player.x -= nx * separation * 0.55;
+                this.player.y -= ny * separation * 0.55;
+                enemy.x += nx * separation * 0.45;
+                enemy.y += ny * separation * 0.45;
             }
         }
-
-        enemy.takeDamage(proximityDamage, this.player);
-        this._pushDebugLog('enemy_proximity_attack_applied', 'info', {
-            enemyId: enemy.id,
-            enemyType: enemy.type || 'enemy',
-            enemyDamage: enemy.damage,
-            enemyHealthBefore,
-            enemyHealthAfter: enemyHealth?.health ?? null,
-            enemyDestroyed: enemy.destroyed,
-            playerProximityDamage: proximityDamage,
-            contactInterval,
-            distance: initialDistance
-        });
-
-        if (!enemy.destroyed) {
-            const dx = enemy.x - this.player.x;
-            const dy = enemy.y - this.player.y;
-            const dist = Math.sqrt(dx * dx + dy * dy) || 1;
-            enemy.applyKnockback((dx / dist) * knockbackStrength, (dy / dist) * knockbackStrength);
-
-            const health = this.player.getComponent<HealthComponent>('HealthComponent');
-            // Global hit-gate: swarms shouldn't apply full stacked damage in a single frame.
-            if (
-                this.playerContactDamageCooldown <= 0 &&
-                health &&
-                !health.isDead &&
-                !health.invulnerable
-            ) {
-                const armorMult = this.player.getDamageTakenMultiplier();
-                const incomingDamage = Math.max(1, Math.round(enemy.damage * armorMult));
-                const healthBefore = health.health;
-                const shieldBefore = this.player.getShield();
-                const remainingDamage = this.player.absorbShieldDamage(incomingDamage);
-                this.playerContactDamageCooldown = this.playerContactDamageInterval;
-
-                if (remainingDamage > 0) {
-                    health.takeDamage(remainingDamage, enemy);
-                }
-
-                const healthAfter = health.health;
-                const shieldAfter = this.player.getShield();
-                this.lastDamageSnapshot = {
-                    time: this.gameTime,
-                    amount: remainingDamage,
-                    sourceType: enemy.type || 'enemy',
-                    sourceId: enemy.id,
-                    sourceX: enemy.x,
-                    sourceY: enemy.y,
-                    playerHealthAfter: healthAfter,
-                    playerShieldAfter: shieldAfter
-                };
-                this._pushDebugLog(remainingDamage > 0 ? 'player_contact_damage_applied' : 'player_contact_damage_absorbed_by_shield', remainingDamage > 0 ? 'warn' : 'info', {
-                    enemyId: enemy.id,
-                    enemyType: enemy.type || 'enemy',
-                    enemyDamage: enemy.damage,
-                    armorMultiplier: Number(armorMult.toFixed(3)),
-                    incomingDamage,
-                    remainingDamage,
-                    healthBefore,
-                    healthAfter,
-                    shieldBefore,
-                    shieldAfter,
-                    playerDamageCooldown: Number(this.playerContactDamageCooldown.toFixed(3)),
-                    distance: Number(dist.toFixed(2))
-                });
-
-                if (health.isDead || healthAfter <= 0) {
-                    this.deathDebugInfo = {
-                        reason: 'enemy_contact',
-                        sourceType: enemy.type || 'enemy',
-                        sourceId: enemy.id,
-                        incomingDamage,
-                        healthBefore,
-                        healthAfter,
-                        shieldBefore,
-                        shieldAfter,
-                        playerX: this.player.x,
-                        playerY: this.player.y,
-                        time: this.gameTime
-                    };
-                    this._pushDebugLog('death_debug_enemy_contact_captured', 'error', this.deathDebugInfo);
-                }
-            } else if ((this.gameTime - this.lastContactGateLogTime) >= 0.35) {
-                this.lastContactGateLogTime = this.gameTime;
-                this._pushDebugLog('player_contact_damage_gated', 'debug', {
-                    enemyId: enemy.id,
-                    enemyType: enemy.type || 'enemy',
-                    enemyDamage: enemy.damage,
-                    playerDamageCooldown: Number(this.playerContactDamageCooldown.toFixed(3)),
-                    healthPresent: !!health,
-                    healthDead: health ? health.isDead : null,
-                    healthInvulnerable: health ? health.invulnerable : null
-                });
-            }
-        }
-
-        this.enemyContactCooldowns.set(enemy.id, contactInterval);
     }
 
     _drawLowHealthVignette(ctx: CanvasRenderingContext2D) {
@@ -1643,7 +1554,7 @@ export class GameScene extends Scene {
                     time: this.gameTime
                 };
             }
-            this._emitGameOver(this._formatDeathMessage('You were overwhelmed. Start again?'));
+            this._beginDeathTransition(this._formatDeathMessage('You were overwhelmed. Start again?'));
             return true;
         }
 
@@ -1721,11 +1632,25 @@ export class GameScene extends Scene {
             this._pushDebugLog(`debug_overlay=${this.debugOverlayEnabled ? 'on' : 'off'}`, 'info');
         }
 
+        if (this.runState !== 'gameover') {
+            this.runStateMachine.update(deltaTime);
+            this.gameTime = this.runStateMachine.runTime;
+        }
+
+        if (this.runState === 'gameover') {
+            return;
+        }
+
+        if (this.runState === 'dying') {
+            this._updateDeathTransition(deltaTime);
+            return;
+        }
+
         if (this._validatePlayerState()) {
             return;
         }
 
-        if (this.showingLevelUp) {
+        if (this.runState === 'levelup') {
             // Fail-safe: recover if UI got hidden but scene lock flag stayed true.
             if (!this.levelUpScreen?.visible) {
                 this._pushDebugLog('level_up_flag_desync_recovered', 'warn', {
@@ -1733,7 +1658,7 @@ export class GameScene extends Scene {
                     xp: this.player?.xp ?? null,
                     xpToNextLevel: this.player?.xpToNextLevel ?? null
                 });
-                this.showingLevelUp = false;
+                this._setRunState('playing', 'level_up_flag_desync_recovered');
             } else {
                 return;
             }
@@ -1742,19 +1667,17 @@ export class GameScene extends Scene {
         if (this.weaponShakeCooldown > 0) {
             this.weaponShakeCooldown -= deltaTime;
         }
-        if (this.playerContactDamageCooldown > 0) {
-            this.playerContactDamageCooldown = Math.max(0, this.playerContactDamageCooldown - deltaTime);
-        }
         if (this.playerSpawnInvulnerabilityTimer > 0) {
             this.playerSpawnInvulnerabilityTimer = Math.max(0, this.playerSpawnInvulnerabilityTimer - deltaTime);
+            if (this.playerSpawnInvulnerabilityTimer <= 0 && this.runState === 'starting') {
+                this._setRunState('playing', 'spawn_protection_complete');
+            }
         }
 
         if (this.hitstopTimer > 0) {
             this.hitstopTimer = Math.max(0, this.hitstopTimer - deltaTime);
             return;
         }
-
-        this.gameTime += deltaTime;
 
         // Update player
         const playerPreviousX = this.player.x;
@@ -1777,7 +1700,6 @@ export class GameScene extends Scene {
                 this._resolveEntityTileCollision(enemy, previous.x, previous.y);
             }
         }
-        this._tickEnemyContactCooldowns(deltaTime, enemies);
         this._trackEnemyProximity(enemies);
 
         this.nearestChest = this._getNearestClosedChest(this.chestInteractRange);
@@ -1793,16 +1715,14 @@ export class GameScene extends Scene {
             }
         }
 
-        // Manual longsword slash (Space)
-        if (this.inputManager.isActionPressed('jump')) {
-        const longsword = this.player.getWeapon(Longsword);
-        longsword?.trigger(enemies);
+        // Manual longsword slash
+        if (this.player.canUseWeapons() && this.inputManager.isActionPressed('attack')) {
+            const longsword = this.player.getWeapon(Longsword);
+            longsword?.trigger(enemies);
         }
 
-        // Update player weapons with enemy list
-        for (const weapon of this.player.weapons) {
-            weapon.update(deltaTime, enemies);
-        }
+        // Update player weapons once per frame with the live enemy list.
+        this.player.updateWeapons(deltaTime, enemies);
 
         // Update particles
         this.particleSystem.update(deltaTime);

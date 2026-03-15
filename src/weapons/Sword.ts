@@ -1,9 +1,14 @@
-// File: src/weapons/Sword.ts
-
-import { Weapon } from './Weapon';
+import { AttackTimeline } from '../combat/AttackTimeline';
+import type { AttackDefinition } from '../combat/CombatTypes';
 import { MathUtils, type Direction } from '../core/Math';
 import type { Enemy } from '../entities/Enemy';
 import type { AnimatorComponent } from '../ecs/components/AnimatorComponent';
+import { Weapon } from './Weapon';
+
+interface SwordContext {
+    targetAngle: number;
+    direction: Direction;
+}
 
 export class Sword extends Weapon {
     baseDamage: number;
@@ -11,65 +16,41 @@ export class Sword extends Weapon {
     baseCooldown: number;
     baseRange: number;
     baseArc: number;
-    swinging: boolean;
-    swingAngle: number;
-    swingProgress: number;
-    swingDuration: number;
-    swingDirection: number;
     bladeLength: number;
     bladeWidth: number;
     trailPositions: Array<{ angle: number; alpha: number }>;
     maxTrailLength: number;
-    hitThisSwing: Set<Enemy>;
     autoAttack: boolean;
     nearestEnemy: Enemy | null;
-    currentCooldown: number;
+    swingDirection: number;
+    timeline: AttackTimeline<SwordContext>;
+    currentEnemies: Enemy[];
 
     constructor(owner: Weapon['owner']) {
         super(owner);
 
         this.name = 'Sword';
         this.maxLevel = 8;
-
-        // Base stats
         this.baseDamage = 12;
         this.baseKnockback = 300;
-        this.baseCooldown = 0.8;
+        this.baseCooldown = 0.36;
         this.baseRange = 60;
-        this.baseArc = Math.PI * 0.75; // 135 degree arc for wider slash
-
-        // Current swing state
-        this.swinging = false;
-        this.swingAngle = 0;
-        this.swingProgress = 0;
-        this.swingDuration = 0.15; // Faster swing
-        this.swingDirection = 1;
-
-        // Visual properties
+        this.baseArc = Math.PI * 0.75;
         this.bladeLength = 28;
         this.bladeWidth = 6;
         this.trailPositions = [];
         this.maxTrailLength = 12;
-
-        // Enemies hit this swing (prevent double-hit)
-        this.hitThisSwing = new Set();
-
-        // Auto-attack settings
         this.autoAttack = true;
         this.nearestEnemy = null;
-
-        // Cooldown timer
-        this.currentCooldown = 0;
+        this.swingDirection = 1;
+        this.timeline = new AttackTimeline<SwordContext>();
+        this.currentEnemies = [];
     }
 
     _applyUpgrade() {
-        // Sword stats are derived from getters that depend on `level`.
-        // No direct stat mutation needed on upgrade.
+        // Sword scales from getters based on level.
     }
 
-    /**
-     * Get current stats based on level
-     */
     get damage() {
         return this.baseDamage * (1 + (this.level - 1) * 0.2);
     }
@@ -83,7 +64,7 @@ export class Sword extends Weapon {
     }
 
     get cooldown() {
-        return Math.max(0.3, this.baseCooldown * (1 - (this.level - 1) * 0.08));
+        return Math.max(0.18, this.baseCooldown * (1 - (this.level - 1) * 0.06));
     }
 
     set cooldown(value: number) {
@@ -91,29 +72,38 @@ export class Sword extends Weapon {
     }
 
     get range() {
-        return this.baseRange * (1 + (this.level - 1) * 0.1);
+        return this.baseRange * (1 + (this.level - 1) * 0.08);
     }
 
     get arc() {
         return Math.min(Math.PI, this.baseArc * (1 + (this.level - 1) * 0.05));
     }
 
-    /**
-     * Find nearest enemy in attack range
-     */
+    get attackDefinition(): AttackDefinition {
+        return {
+            key: 'sword_slash',
+            timing: {
+                windup: 0.06,
+                active: 0.11,
+                recovery: 0.1,
+                cooldown: this.cooldown
+            },
+            damageType: 'physical'
+        };
+    }
+
     findNearestEnemy(enemies: Enemy[]) {
-        let nearest = null;
-        let nearestDist = this.range * 1.5;
+        let nearest: Enemy | null = null;
+        let nearestDistSq = this.range * this.range * 1.8;
 
         for (const enemy of enemies) {
             if (enemy.destroyed) continue;
 
             const dx = enemy.x - this.owner.x;
             const dy = enemy.y - this.owner.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-
-            if (dist < nearestDist) {
-                nearestDist = dist;
+            const distSq = dx * dx + dy * dy;
+            if (distSq < nearestDistSq) {
+                nearestDistSq = distSq;
                 nearest = enemy;
             }
         }
@@ -121,199 +111,176 @@ export class Sword extends Weapon {
         return nearest;
     }
 
-    /**
-     * Start a swing attack
-     */
     startSwing(targetAngle: number) {
-        if (this.swinging || this.currentCooldown > 0) return;
+        if (!this.timeline.canStart()) return false;
 
-        this.swinging = true;
-        this.swingProgress = 0;
-        this.swingAngle = targetAngle;
+        let direction: Direction = 'down';
+        if (targetAngle > -Math.PI * 0.75 && targetAngle < -Math.PI * 0.25) direction = 'up';
+        else if (targetAngle >= -Math.PI * 0.25 && targetAngle <= Math.PI * 0.25) direction = 'right';
+        else if (targetAngle > Math.PI * 0.25 && targetAngle < Math.PI * 0.75) direction = 'down';
+        else direction = 'left';
+
+        const definition = this.attackDefinition;
+        const totalAttackDuration =
+            definition.timing.windup + definition.timing.active + definition.timing.recovery;
+
         this.swingDirection = Math.random() > 0.5 ? 1 : -1;
-        this.hitThisSwing.clear();
         this.trailPositions = [];
+        this.hitRegistry.clearChannel(definition.key);
 
-        // Trigger attack animation on owner (lock so movement doesn't instantly override it)
-        let dir: Direction = 'down';
-        if (targetAngle > -Math.PI * 0.75 && targetAngle < -Math.PI * 0.25) dir = 'up';
-        else if (targetAngle >= -Math.PI * 0.25 && targetAngle <= Math.PI * 0.25) dir = 'right';
-        else if (targetAngle > Math.PI * 0.25 && targetAngle < Math.PI * 0.75) dir = 'down';
-        else dir = 'left';
+        return this.timeline.start(definition, { targetAngle, direction }, {
+            onStart: ({ context }) => {
+                this.owner.setCombatActionState('windup', definition.timing.windup);
+                this.owner.lockAnimation('attack', context?.direction || direction, totalAttackDuration, 1.2);
+            },
+            onPhaseChange: ({ phase }) => {
+                if (phase === 'active') {
+                    this.owner.setCombatActionState('active', definition.timing.active);
+                } else if (phase === 'recovery' || phase === 'cooldown') {
+                    this.owner.setCombatActionState('recovery', phase === 'recovery'
+                        ? definition.timing.recovery
+                        : definition.timing.cooldown);
+                }
+            },
+            onActiveTick: ({ attackId, context }) => {
+                const currentAngle = this.getCurrentSwingAngle();
+                this.trailPositions.push({ angle: currentAngle, alpha: 1 });
+                while (this.trailPositions.length > this.maxTrailLength) {
+                    this.trailPositions.shift();
+                }
+                for (let i = 0; i < this.trailPositions.length; i++) {
+                    this.trailPositions[i].alpha = ((i + 1) / this.trailPositions.length) * 0.6;
+                }
 
-        if (typeof (this.owner as any).lockAnimation === 'function') {
-            (this.owner as any).lockAnimation('attack', dir, this.swingDuration * 1.2, 1.25);
-        } else {
-            const animator = this.owner.getComponent<AnimatorComponent>('AnimatorComponent');
-            animator?.setState('attack', dir);
-        }
+                this.checkHits(attackId, context?.targetAngle ?? targetAngle);
+            },
+            onComplete: () => {
+                this.owner.clearCombatActionState();
+                this.trailPositions = [];
+            },
+            onCancel: () => {
+                this.owner.clearCombatActionState();
+                this.trailPositions = [];
+            }
+        });
     }
 
     update(deltaTime: number, enemies: Enemy[] = []) {
-        // Update cooldown
-        if (this.currentCooldown > 0) {
-            this.currentCooldown -= deltaTime;
-        }
+        this.currentEnemies = enemies;
+        this.hitRegistry.tick(deltaTime);
 
-        // Auto-attack: find target and swing
-        if (this.autoAttack && !this.swinging && this.currentCooldown <= 0) {
+        if (this.autoAttack && this.timeline.canStart()) {
             this.nearestEnemy = this.findNearestEnemy(enemies);
-
             if (this.nearestEnemy) {
                 const dx = this.nearestEnemy.x - this.owner.x;
                 const dy = this.nearestEnemy.y - this.owner.y;
-                const targetAngle = Math.atan2(dy, dx);
-                this.startSwing(targetAngle);
+                this.startSwing(Math.atan2(dy, dx));
             }
         }
 
-        // Update swing
-        if (this.swinging) {
-            this.swingProgress += deltaTime / this.swingDuration;
-
-            // Store trail position
-            const currentAngle = this._getCurrentSwingAngle();
-            this.trailPositions.push({
-                angle: currentAngle,
-                alpha: 1.0
-            });
-
-            // Limit trail length
-            if (this.trailPositions.length > this.maxTrailLength) {
-                this.trailPositions.shift();
-            }
-
-            // Fade trail
-            for (let i = 0; i < this.trailPositions.length; i++) {
-                this.trailPositions[i].alpha = (i + 1) / this.trailPositions.length * 0.6;
-            }
-
-            // Check for hits during swing
-            this._checkHits(enemies);
-
-            // End swing
-            if (this.swingProgress >= 1) {
-                this.swinging = false;
-                this.currentCooldown = this.cooldown;
-                this.trailPositions = [];
-            }
-        }
+        this.timeline.update(deltaTime);
     }
 
-    /**
-     * Get current swing angle based on progress
-     */
-    _getCurrentSwingAngle() {
+    getCurrentSwingAngle() {
+        const context = this.timeline.context;
+        const targetAngle = context?.targetAngle ?? 0;
         const halfArc = this.arc / 2;
-        const startAngle = this.swingAngle - halfArc * this.swingDirection;
-        const endAngle = this.swingAngle + halfArc * this.swingDirection;
+        const startAngle = targetAngle - halfArc * this.swingDirection;
+        const endAngle = targetAngle + halfArc * this.swingDirection;
+        const progress = this.timeline.phase === 'active'
+            ? MathUtils.easeOutQuad(this.timeline.getPhaseProgress())
+            : this.timeline.phase === 'recovery'
+                ? 1
+                : 0;
 
-        // Ease in-out for smoother swing
-        const t = MathUtils.easeOutQuad(this.swingProgress);
-        return MathUtils.lerp(startAngle, endAngle, t);
+        return MathUtils.lerp(startAngle, endAngle, progress);
     }
 
-    /**
-     * Check for enemies hit by the swing
-     */
-    _checkHits(enemies: Enemy[]) {
-        const currentAngle = this._getCurrentSwingAngle();
-        // Only apply damage during the "active" portion of the swing.
-        if (this.swingProgress < 0.12 || this.swingProgress > 0.88) return;
+    checkHits(attackId: string, targetAngle: number) {
+        const currentAngle = this.getCurrentSwingAngle();
         const hitWindow = this.arc * 0.35;
 
-        for (const enemy of enemies) {
-            if (enemy.destroyed || this.hitThisSwing.has(enemy)) continue;
+        for (const enemy of this.currentEnemies) {
+            if (enemy.destroyed) continue;
+            if (!this.hitRegistry.canHit(attackId, enemy.id)) continue;
 
             const dx = enemy.x - this.owner.x;
             const dy = enemy.y - this.owner.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
-
-            // Check if in range
             if (dist > this.range + enemy.size) continue;
 
-            // Check if within arc
             const enemyAngle = Math.atan2(dy, dx);
             const angleDiff = MathUtils.normalizeAngle(enemyAngle - currentAngle);
+            if (Math.abs(angleDiff) > hitWindow) continue;
 
-            if (Math.abs(angleDiff) < hitWindow) {
-                this._hitEnemy(enemy, enemyAngle);
-            }
+            const damageContext = this.getDamageContext(this.damage, 0.08);
+            const knockbackX = Math.cos(enemyAngle);
+            const knockbackY = Math.sin(enemyAngle);
+
+            enemy.takeDamage(
+                this.buildDamagePayload(
+                    `${attackId}:${enemy.id}`,
+                    damageContext.damage,
+                    'physical',
+                    {
+                        crit: damageContext.crit,
+                        staggerDuration: 0.09,
+                        invulnerabilityDuration: 0.05,
+                        knockback: {
+                            x: knockbackX,
+                            y: knockbackY,
+                            force: this.knockback
+                        }
+                    }
+                )
+            );
+
+            this.hitRegistry.registerHit(attackId, enemy.id, 999);
         }
     }
 
-    /**
-     * Apply hit to enemy
-     */
-    _hitEnemy(enemy: Enemy, angle: number) {
-        this.hitThisSwing.add(enemy);
-
-        // Apply damage
-        const damageCtx = this.getDamageContext(this.damage, 0.06);
-        const damage = damageCtx.damage;
-        enemy.takeDamage(damage, this.owner);
-
-        // Apply knockback
-        const knockbackX = Math.cos(angle) * this.knockback;
-        const knockbackY = Math.sin(angle) * this.knockback;
-        enemy.applyKnockback(knockbackX, knockbackY);
-    }
-
     draw(ctx: CanvasRenderingContext2D) {
-        if (!this.swinging && this.trailPositions.length === 0) return;
+        if (this.timeline.phase === 'idle' && this.trailPositions.length === 0) {
+            return;
+        }
 
-        const { x, y } = this.owner;
         const slashRadius = this.range * 0.8;
+        const currentAngle = this.getCurrentSwingAngle();
+        const trailStartAngle = this.trailPositions[0]?.angle ?? currentAngle;
+        const trailEndAngle = this.trailPositions[this.trailPositions.length - 1]?.angle ?? currentAngle;
 
         ctx.save();
-        ctx.translate(x, y);
+        ctx.translate(this.owner.x, this.owner.y);
 
-        // Draw arc slash trail
         if (this.trailPositions.length >= 2) {
-            const startAngle = this.trailPositions[0].angle;
-            const endAngle = this.trailPositions[this.trailPositions.length - 1].angle;
-
-            // Outer glow
             ctx.beginPath();
-            ctx.arc(0, 0, slashRadius + 8, startAngle, endAngle, this.swingDirection < 0);
-            ctx.strokeStyle = 'rgba(150, 200, 255, 0.2)';
+            ctx.arc(0, 0, slashRadius + 8, trailStartAngle, trailEndAngle, this.swingDirection < 0);
+            ctx.strokeStyle = 'rgba(150, 200, 255, 0.18)';
             ctx.lineWidth = 16;
             ctx.lineCap = 'round';
             ctx.stroke();
 
-            // Main slash arc
             ctx.beginPath();
-            ctx.arc(0, 0, slashRadius, startAngle, endAngle, this.swingDirection < 0);
+            ctx.arc(0, 0, slashRadius, trailStartAngle, trailEndAngle, this.swingDirection < 0);
             const gradient = ctx.createRadialGradient(0, 0, slashRadius - 10, 0, 0, slashRadius + 10);
-            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
-            gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.8)');
-            gradient.addColorStop(1, 'rgba(150, 180, 255, 0.3)');
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.92)');
+            gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.82)');
+            gradient.addColorStop(1, 'rgba(150, 180, 255, 0.28)');
             ctx.strokeStyle = gradient;
             ctx.lineWidth = 8;
             ctx.lineCap = 'round';
             ctx.stroke();
-
-            // Inner bright edge
-            ctx.beginPath();
-            ctx.arc(0, 0, slashRadius - 2, startAngle, endAngle, this.swingDirection < 0);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-            ctx.lineWidth = 2;
-            ctx.stroke();
         }
 
-        // Draw blade tip at current position
-        if (this.swinging) {
-            const currentAngle = this._getCurrentSwingAngle();
+        if (this.timeline.phase === 'active') {
             const tipX = Math.cos(currentAngle) * slashRadius;
             const tipY = Math.sin(currentAngle) * slashRadius;
 
-            // Blade tip glow
             ctx.beginPath();
             ctx.arc(tipX, tipY, 6, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.fill();
 
-            // Blade tip core
             ctx.beginPath();
             ctx.arc(tipX, tipY, 3, 0, Math.PI * 2);
             ctx.fillStyle = '#ffffff';
@@ -323,11 +290,10 @@ export class Sword extends Weapon {
         ctx.restore();
     }
 
-    upgrade() {
-        if (this.level < this.maxLevel) {
-            this.level++;
-            return true;
-        }
-        return false;
+    cancel() {
+        super.cancel();
+        this.timeline.cancel();
+        this.trailPositions = [];
+        this.owner.clearCombatActionState();
     }
 }

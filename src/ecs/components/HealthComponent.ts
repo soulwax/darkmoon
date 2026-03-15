@@ -4,6 +4,11 @@ import { Component } from '../Component';
 import { eventBus, GameEvents } from '../../core/EventBus';
 import type { Entity } from '../Entity';
 
+export interface DamageOptions {
+    applyInvulnerability?: boolean;
+    emitPlayerEvents?: boolean;
+}
+
 export class HealthComponent extends Component {
     maxHealth: number;
     health: number;
@@ -53,21 +58,22 @@ export class HealthComponent extends Component {
      * @param {Object} [source] - Damage source entity
      * @returns {boolean} - True if damage was applied
      */
-    takeDamage(amount: number, source: Entity | null = null) {
+    takeDamage(amount: number, source: Entity | null = null, options: DamageOptions = {}) {
         if (this.isDead || this.invulnerable || amount <= 0) {
             return false;
         }
+
+        const applyInvulnerability = options.applyInvulnerability !== false;
+        const emitPlayerEvents = options.emitPlayerEvents !== false;
 
         this.health = Math.max(0, this.health - amount);
         const lethal = this.health <= 0;
 
         // Trigger invulnerability only when the hit is non-lethal.
-        if (!lethal) {
-            this.invulnerable = true;
-            this.invulnerabilityTimer = this.invulnerabilityDuration;
+        if (!lethal && applyInvulnerability) {
+            this.setInvulnerability(this.invulnerabilityDuration);
         } else {
-            this.invulnerable = false;
-            this.invulnerabilityTimer = 0;
+            this.clearInvulnerability();
         }
 
         // Trigger damage flash
@@ -75,7 +81,7 @@ export class HealthComponent extends Component {
         this.damageFlashTimer = this.damageFlashDuration;
 
         // Emit event (player-only)
-        if (this._isPlayer()) {
+        if (emitPlayerEvents && this._isPlayer()) {
             eventBus.emit(GameEvents.PLAYER_DAMAGED, {
                 entity: this.entity,
                 amount: amount,
@@ -140,6 +146,21 @@ export class HealthComponent extends Component {
         }
     }
 
+    setInvulnerability(duration: number = this.invulnerabilityDuration) {
+        if (duration <= 0) {
+            this.clearInvulnerability();
+            return;
+        }
+
+        this.invulnerable = true;
+        this.invulnerabilityTimer = Math.max(this.invulnerabilityTimer, duration);
+    }
+
+    clearInvulnerability() {
+        this.invulnerable = false;
+        this.invulnerabilityTimer = 0;
+    }
+
     /**
      * Handle death
      */
@@ -148,8 +169,7 @@ export class HealthComponent extends Component {
 
         this.isDead = true;
         this.health = 0;
-        this.invulnerable = false;
-        this.invulnerabilityTimer = 0;
+        this.clearInvulnerability();
 
         if (this._isPlayer()) {
             eventBus.emit(GameEvents.PLAYER_DIED, {
@@ -169,8 +189,7 @@ export class HealthComponent extends Component {
     revive(healthPercent: number = 1.0) {
         this.isDead = false;
         this.health = Math.floor(this.maxHealth * healthPercent);
-        this.invulnerable = false;
-        this.invulnerabilityTimer = 0;
+        this.clearInvulnerability();
     }
 
     /**

@@ -10,8 +10,6 @@ export class MagicOrbs extends Weapon {
     orbitRadius: number;
     rotationSpeed: number;
     rotation: number;
-    hitEnemies: Set<number>;
-    lastHitAngle: number;
     color: string;
     glowColor: string;
 
@@ -29,10 +27,6 @@ export class MagicOrbs extends Weapon {
         this.orbitRadius = 50;
         this.rotationSpeed = 2; // radians per second
         this.rotation = 0;
-
-        // Track which enemies were hit (reset each orbit)
-        this.hitEnemies = new Set();
-        this.lastHitAngle = 0;
 
         // Visual
         this.color = '#66f';
@@ -76,14 +70,10 @@ export class MagicOrbs extends Weapon {
     }
 
     update(deltaTime: number, enemies: Enemy[] = []) {
-        // Update rotation
-        const prevRotation = this.rotation;
-        this.rotation += this.rotationSpeed * deltaTime;
+        this.hitRegistry.tick(deltaTime);
 
-        // Reset hit tracking after a full rotation
-        if (Math.floor(this.rotation / (Math.PI * 2)) > Math.floor(prevRotation / (Math.PI * 2))) {
-            this.hitEnemies.clear();
-        }
+        // Update rotation
+        this.rotation += this.rotationSpeed * deltaTime;
 
         // Check collision with enemies
         const angleStep = (Math.PI * 2) / this.orbCount;
@@ -92,20 +82,35 @@ export class MagicOrbs extends Weapon {
             const angle = this.rotation + i * angleStep;
             const orbX = this.owner.x + Math.cos(angle) * this.orbitRadius;
             const orbY = this.owner.y + Math.sin(angle) * this.orbitRadius;
+            const hitChannel = `magic-orb:${i}`;
 
             for (const enemy of enemies) {
-                if (this.hitEnemies.has(enemy.id)) continue;
+                if (!this.hitRegistry.canHit(hitChannel, enemy.id)) continue;
 
                 const dx = enemy.x - orbX;
                 const dy = enemy.y - orbY;
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist < this.orbRadius + enemy.size) {
-                    // Hit!
                     const damageCtx = this.getDamageContext(this.damage, 0.07);
-                    const finalDamage = damageCtx.damage;
-                    enemy.takeDamage(finalDamage, this.owner);
-                    this.hitEnemies.add(enemy.id);
+                    enemy.takeDamage(
+                        this.buildDamagePayload(
+                            `${hitChannel}:${enemy.id}`,
+                            damageCtx.damage,
+                            'arcane',
+                            {
+                                crit: damageCtx.crit,
+                                staggerDuration: 0.05,
+                                invulnerabilityDuration: 0.05,
+                                knockback: {
+                                    x: dx / (dist || 1),
+                                    y: dy / (dist || 1),
+                                    force: 120
+                                }
+                            }
+                        )
+                    );
+                    this.hitRegistry.registerHit(hitChannel, enemy.id, 0.24);
                 }
             }
         }
